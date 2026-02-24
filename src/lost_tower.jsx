@@ -395,12 +395,12 @@ export default function TowerDefense() {
       if (rightDrag) { camAngle += (e.clientX - lastMX) * 0.005; lastMX = e.clientX; }
       else { showHover(e.clientX, e.clientY); }
     }
-    function onClickDesktop(e) { if (e.button === 0) tryPlaceTower(e.clientX, e.clientY); }
+    function onMouseDownPlace(e) { if (e.button === 0) tryPlaceTower(e.clientX, e.clientY); }
     function onWheel(e) { camDist = Math.max(12, Math.min(45, camDist + e.deltaY * 0.02)); camHeight = camDist * 0.9; }
     function onCtx(e) { e.preventDefault(); }
 
-    el.addEventListener("mousedown", onMouseDown);
-    el.addEventListener("click", onClickDesktop);
+    function onMouseDownAll(e) { onMouseDown(e); onMouseDownPlace(e); }
+    el.addEventListener("mousedown", onMouseDownAll);
     document.addEventListener("mouseup", onMouseUpGlobal);
     document.addEventListener("mousemove", onMouseMoveGlobal);
     el.addEventListener("wheel", onWheel, { passive: true });
@@ -600,8 +600,7 @@ export default function TowerDefense() {
     window.addEventListener("resize", onResize);
 
     return () => {
-      el.removeEventListener("mousedown", onMouseDown);
-      el.removeEventListener("click", onClickDesktop);
+      el.removeEventListener("mousedown", onMouseDownAll);
       document.removeEventListener("mouseup", onMouseUpGlobal);
       document.removeEventListener("mousemove", onMouseMoveGlobal);
       el.removeEventListener("wheel", onWheel);
