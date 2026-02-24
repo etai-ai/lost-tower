@@ -4,13 +4,237 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>The Lost Tower</title>
+    <script type="importmap">
+      { "imports": { "three": "https://esm.sh/three@0.170.0" } }
+    </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #0a0908; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0908; font-family: 'Georgia', serif; }
+
+      /* ─── Title Screen ─── */
+      #title-screen {
+        width: 100%; height: 100vh;
+        background: linear-gradient(180deg, #0a0908 0%, #1a1510 50%, #0a0908 100%);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #d4c8a0; padding: 20px; text-align: center;
+      }
+      #title-screen .subtitle {
+        font-size: 12px; letter-spacing: 6px; text-transform: uppercase; color: #8a7e60; margin-bottom: 16px;
+      }
+      #title-screen h1 {
+        font-size: 48px; font-weight: 300; margin: 0 0 8px 0;
+        text-shadow: 0 0 40px rgba(255,160,60,0.3); letter-spacing: 4px;
+      }
+      #title-screen .divider {
+        width: 60px; height: 1px;
+        background: linear-gradient(90deg, transparent, #8a7e60, transparent);
+        margin: 16px 0;
+      }
+      #title-screen .description {
+        color: #8a7e60; font-size: 15px; max-width: 480px; line-height: 1.8; margin: 8px 0 32px;
+      }
+      #start-btn {
+        padding: 14px 48px; font-size: 16px; letter-spacing: 3px; text-transform: uppercase;
+        background: transparent; border: 1px solid #8a7e60; color: #d4c8a0;
+        cursor: pointer; font-family: 'Georgia', serif; border-radius: 6px;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #title-screen .controls {
+        margin-top: 32px; color: #5a5240; font-size: 11px; line-height: 2.2;
+      }
+      #title-screen .controls strong { color: #8a7e60; }
+      .controls-mobile { display: none; }
+      .controls-desktop { display: inline; }
+
+      body.mobile #title-screen .subtitle { font-size: 10px; }
+      body.mobile #title-screen h1 { font-size: 30px; }
+      body.mobile #title-screen .description { font-size: 13px; }
+      body.mobile #start-btn { padding: 14px 36px; }
+      body.mobile .controls-mobile { display: inline; }
+      body.mobile .controls-desktop { display: none; }
+
+      /* ─── Game Screen ─── */
+      #game-screen {
+        width: 100%; height: 100vh; position: relative; overflow: hidden;
+        touch-action: none; user-select: none; -webkit-user-select: none;
+      }
+      #game-mount { width: 100%; height: 100%; cursor: crosshair; }
+      body.mobile #game-mount { cursor: default; }
+
+      /* ─── HUD ─── */
+      #hud {
+        position: absolute; top: 0; left: 0; right: 0;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 16px; z-index: 10;
+        background: linear-gradient(180deg, rgba(10,9,8,0.75) 0%, rgba(10,9,8,0.4) 80%, transparent 100%);
+        min-height: 52px;
+      }
+      body.mobile #hud { padding: 6px 8px; min-height: 48px; }
+
+      #hud-left { color: #d4c8a0; min-width: 120px; pointer-events: none; }
+      body.mobile #hud-left { min-width: 70px; }
+      #hud-left .stats { display: flex; gap: 18px; font-size: 16px; font-weight: bold; }
+      body.mobile #hud-left .stats { gap: 10px; font-size: 14px; }
+      #gold-display { color: #ffcc44; }
+      #lives-display { color: #ff8866; }
+
+      #hud-center { display: flex; align-items: center; gap: 10px; }
+      body.mobile #hud-center { gap: 6px; }
+
+      #wave-btn {
+        padding: 6px 18px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+        background: rgba(138,126,96,0.35); border: 1px solid #8a7e60; color: #d4c8a0;
+        cursor: pointer; font-family: 'Georgia', serif; border-radius: 5px;
+        -webkit-tap-highlight-color: transparent;
+        box-shadow: 0 0 12px rgba(255,160,60,0.15); white-space: nowrap;
+      }
+      body.mobile #wave-btn { padding: 5px 12px; font-size: 11px; }
+
+      #wave-status {
+        color: #d4c8a0; font-size: 13px; opacity: 0.7;
+        text-align: center; pointer-events: none; white-space: nowrap;
+      }
+      body.mobile #wave-status { font-size: 11px; }
+      #enemies-left { font-size: 11px; opacity: 0.5; margin-left: 6px; }
+      body.mobile #enemies-left { font-size: 9px; }
+
+      .hud-divider { width: 1px; height: 20px; background: rgba(138,126,96,0.3); }
+
+      #auto-btn, #speed-btn {
+        font-family: 'Georgia', serif; cursor: pointer; border-radius: 4px;
+        -webkit-tap-highlight-color: transparent; letter-spacing: 1px; white-space: nowrap;
+      }
+      #auto-btn { padding: 5px 12px; font-size: 11px; }
+      body.mobile #auto-btn { padding: 4px 8px; font-size: 10px; }
+      #speed-btn { padding: 5px 14px; font-size: 11px; font-weight: bold; min-width: 42px; }
+      body.mobile #speed-btn { padding: 4px 10px; font-size: 10px; min-width: 36px; }
+
+      #hud-right { color: #d4c8a0; text-align: right; min-width: 120px; pointer-events: none; }
+      body.mobile #hud-right { min-width: 70px; }
+      #wave-name { font-size: 12px; opacity: 0.5; }
+      body.mobile #wave-name { font-size: 10px; }
+
+      /* ─── Toast ─── */
+      #toast {
+        position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+        background: rgba(40,20,10,0.9); border: 1px solid rgba(212,200,160,0.3);
+        padding: 6px 18px; border-radius: 6px; color: #d4c8a0; font-size: 14px;
+        letter-spacing: 1px; pointer-events: none; z-index: 15; white-space: nowrap;
+      }
+      body.mobile #toast { top: 56px; font-size: 12px; }
+
+      /* ─── Tower Bar ─── */
+      #tower-bar {
+        position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 8px; z-index: 10;
+      }
+      body.mobile #tower-bar { bottom: 8px; gap: 6px; }
+
+      /* ─── Overlays ─── */
+      .overlay {
+        position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 20; padding: 20px;
+      }
+      #game-over .overlay-title {
+        font-size: 48px; color: #ff4444;
+        text-shadow: 0 0 40px rgba(255,40,40,0.4); letter-spacing: 4px;
+      }
+      body.mobile #game-over .overlay-title { font-size: 34px; }
+      #victory-screen .overlay-title {
+        font-size: 48px; color: #ffd700;
+        text-shadow: 0 0 40px rgba(255,200,60,0.5); letter-spacing: 4px;
+      }
+      body.mobile #victory-screen .overlay-title { font-size: 34px; }
+      .overlay .overlay-sub { color: #d4c8a0; margin-top: 16px; font-size: 16px; opacity: 0.7; }
+      body.mobile .overlay .overlay-sub { font-size: 14px; }
+      #victory-stats { color: #8a7e60; margin-top: 8px; font-size: 13px; }
+      .overlay button {
+        margin-top: 32px; padding: 14px 40px; font-size: 14px; letter-spacing: 2px;
+        text-transform: uppercase; background: transparent; border: 1px solid #8a7e60;
+        color: #d4c8a0; cursor: pointer; font-family: 'Georgia', serif; border-radius: 6px;
+        -webkit-tap-highlight-color: transparent;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <!-- Title Screen -->
+    <div id="title-screen">
+      <div class="subtitle">A Tower Defense Adventure</div>
+      <h1>THE LOST TOWER</h1>
+      <div class="divider"></div>
+      <p class="description">
+        Ancient spirits flood through a rift in the temple floor.
+        Erect elemental obelisks to destroy them before they escape.
+        Survive 10 waves to seal the breach.
+      </p>
+      <button id="start-btn">Defend the Tower</button>
+      <div class="controls">
+        <span class="controls-desktop">
+          <strong>Click</strong> &mdash; Place tower &middot;
+          <strong>Right-drag</strong> &mdash; Rotate &middot;
+          <strong>Scroll</strong> &mdash; Zoom
+        </span>
+        <span class="controls-mobile">
+          <strong>Tap</strong> &mdash; Place tower &middot;
+          <strong>Drag</strong> &mdash; Rotate &middot;
+          <strong>Pinch</strong> &mdash; Zoom
+        </span>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" style="display:none">
+      <div id="game-mount"></div>
+
+      <!-- HUD -->
+      <div id="hud">
+        <div id="hud-left">
+          <div class="stats">
+            <span id="gold-display">&#x2B25; 150</span>
+            <span id="lives-display">&#x2665; 20</span>
+          </div>
+        </div>
+
+        <div id="hud-center">
+          <button id="wave-btn">&#x25B6; Wave 1</button>
+          <div id="wave-status" style="display:none">
+            <span id="wave-num">Wave 0/10</span>
+            <span id="enemies-left" style="display:none"></span>
+          </div>
+          <div class="hud-divider"></div>
+          <button id="auto-btn">AUTO</button>
+          <div class="hud-divider"></div>
+          <button id="speed-btn">1x</button>
+        </div>
+
+        <div id="hud-right">
+          <div id="wave-name" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Toast -->
+      <div id="toast" style="display:none"></div>
+
+      <!-- Tower Bar (populated by JS) -->
+      <div id="tower-bar"></div>
+
+      <!-- Game Over -->
+      <div id="game-over" class="overlay" style="display:none">
+        <div class="overlay-title">OVERRUN</div>
+        <div class="overlay-sub" id="game-over-wave"></div>
+        <button id="restart-btn">Try Again</button>
+      </div>
+
+      <!-- Victory -->
+      <div id="victory-screen" class="overlay" style="display:none">
+        <div class="overlay-title">SEALED</div>
+        <div class="overlay-sub">The breach is sealed. The temple is safe.</div>
+        <div id="victory-stats"></div>
+        <button id="replay-btn">Play Again</button>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
   </body>
 </html>
