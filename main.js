@@ -243,6 +243,68 @@ function init() {
     towerGlowMat[key] = new THREE.SpriteMaterial({ map: glowMap, color: info.color, transparent: true, opacity: 0.3 });
   });
 
+  /* ─── TOWER PLACEMENT GHOST PREVIEW ─── */
+  const ghostGroups = {};
+  const ghostMats = {}; /* track materials for tint switching */
+  Object.entries(TOWER_TYPES).forEach(([key, info]) => {
+    const group = new THREE.Group();
+    /* Ghost base */
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x888888, emissive: 0x333333, emissiveIntensity: 0.3,
+      transparent: true, opacity: 0.35, depthWrite: false
+    });
+    const base = new THREE.Mesh(towerGeo.base, baseMat);
+    base.position.y = 0.15; group.add(base);
+    /* Ghost body */
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: info.color, emissive: 0x00ff00, emissiveIntensity: 0.6,
+      transparent: true, opacity: 0.35, depthWrite: false
+    });
+    const body = new THREE.Mesh(towerGeo[key], bodyMat);
+    if (key === "ice") body.rotation.y = Math.PI / 4;
+    body.position.y = 1.1; group.add(body);
+    /* Ghost orb */
+    const orbMat = new THREE.MeshStandardMaterial({
+      color: info.color, emissive: 0x00ff00, emissiveIntensity: 1.0,
+      transparent: true, opacity: 0.35, depthWrite: false
+    });
+    const orb = new THREE.Mesh(towerGeo.orb, orbMat);
+    orb.position.y = 2.2; group.add(orb);
+
+    group.visible = false;
+    scene.add(group);
+    ghostGroups[key] = group;
+    ghostMats[key] = { body: bodyMat, orb: orbMat };
+  });
+
+  let activeGhostKey = null;
+
+  function setGhostTint(key, valid) {
+    const mats = ghostMats[key];
+    const tint = valid ? 0x00ff00 : 0xff0000;
+    mats.body.emissive.setHex(tint);
+    mats.orb.emissive.setHex(tint);
+  }
+
+  function showGhostPreview(x, z, type, valid) {
+    /* Hide previous ghost if different type */
+    if (activeGhostKey && activeGhostKey !== type) {
+      ghostGroups[activeGhostKey].visible = false;
+    }
+    const g = ghostGroups[type];
+    g.position.set(x, 0, z);
+    setGhostTint(type, valid);
+    g.visible = true;
+    activeGhostKey = type;
+  }
+
+  function hideGhostPreview() {
+    if (activeGhostKey) {
+      ghostGroups[activeGhostKey].visible = false;
+      activeGhostKey = null;
+    }
+  }
+
   /* ─── ENEMY GEOMETRIES PER TYPE ─── */
   const enemyGeoByType = {
     shade:      new THREE.SphereGeometry(0.3, 10, 10),
@@ -460,7 +522,7 @@ function init() {
     const mesh = new THREE.Mesh(projGeo, projMat[tower.type]);
     mesh.position.copy(tower.group.position); mesh.position.y = 2.2;
     scene.add(mesh);
-    state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.damage, type: tower.type });
+    state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.damage, type: tower.type, trailCounter: 0 });
     /* Tower fire sound */
     const fn = SFX.towerFire[tower.type];
     if (fn) fn();
@@ -532,6 +594,7 @@ function init() {
     const { col, row } = cell;
     const existing = state.towerMeshMap.get(col + "," + row);
     if (existing) {
+      hideGhostPreview();
       if (getSelectedTower() === existing) hideTowerPopup(rangeCircle);
       else showTowerPopup(existing, rangeCircle, setRangeCircleRange, state);
       return;
@@ -542,28 +605,37 @@ function init() {
     if (state.gold < info.cost) { showToast("Not enough gold!"); return; }
     state.gold -= info.cost; updateGold(state);
     createTower(col, row, state.selectedTower);
+    hideGhostPreview();
     SFX.towerPlace();
   }
 
   function showHover(clientX, clientY) {
     if (getSelectedTower()) return;
     const cell = getGridFromXY(clientX, clientY);
-    if (!cell) { hoverRing.visible = false; rangeCircle.visible = false; return; }
+    if (!cell) { hoverRing.visible = false; rangeCircle.visible = false; hideGhostPreview(); return; }
     const existing = state.towerMeshMap.get(cell.col + "," + cell.row);
     if (existing) {
-      hoverRing.visible = false;
+      hoverRing.visible = false; hideGhostPreview();
       const pos = existing.group.position;
       rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
       setRangeCircleRange(existing.range);
       rangeCircle.visible = true; return;
     }
-    if (isPathTile(cell.col, cell.row)) { hoverRing.visible = false; rangeCircle.visible = false; return; }
+    if (isPathTile(cell.col, cell.row)) {
+      /* Show red ghost on path — can't build here */
+      hoverRing.visible = false; rangeCircle.visible = false;
+      const pos = gridToWorld(cell.col, cell.row);
+      showGhostPreview(pos.x, pos.z, state.selectedTower, false);
+      return;
+    }
     const pos = gridToWorld(cell.col, cell.row);
     hoverRing.position.x = pos.x; hoverRing.position.z = pos.z; hoverRing.visible = true;
     const s = TOWER_TYPES[state.selectedTower].range;
     rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
     setRangeCircleRange(s);
     rangeCircle.visible = true;
+    /* Show green ghost on valid cell */
+    showGhostPreview(pos.x, pos.z, state.selectedTower, true);
   }
 
   /* ─── CAMERA STATE ─── */
@@ -652,7 +724,7 @@ function init() {
     }
     if (e.touches.length === 0) { touchMode = "none"; }
     else if (e.touches.length === 1) { touchMode = "pan"; panLastX = e.touches[0].clientX; }
-    hoverRing.visible = false; rangeCircle.visible = false;
+    hoverRing.visible = false; rangeCircle.visible = false; hideGhostPreview();
   }
 
   el.addEventListener("touchstart", onTouchStart, { passive: false });
@@ -693,6 +765,50 @@ function init() {
   scene.add(particleMesh);
 
   let nextParticle = 0;
+
+  /* ─── SHOCKWAVE RING POOL ─── */
+  const SHOCKWAVE_COUNT = mobile ? 3 : 6;
+  const shockwaveGeo = new THREE.RingGeometry(0.3, 0.5, 24);
+  const shockwavePool = [];
+  const activeShockwaves = [];
+  for (let i = 0; i < SHOCKWAVE_COUNT; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(shockwaveGeo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+    scene.add(ring);
+    shockwavePool.push(ring);
+  }
+
+  function spawnShockwave(x, y, z, color, maxScale, lifetime) {
+    if (shockwavePool.length === 0) return;
+    const ring = shockwavePool.pop();
+    ring.position.set(x, y + 0.05, z);
+    ring.scale.set(0.1, 0.1, 0.1);
+    ring.material.color.setHex(color);
+    ring.material.opacity = 0.7;
+    ring.visible = true;
+    activeShockwaves.push({ ring, maxScale, lifetime, elapsed: 0 });
+  }
+
+  function updateShockwaves(dt) {
+    for (let i = activeShockwaves.length - 1; i >= 0; i--) {
+      const sw = activeShockwaves[i];
+      sw.elapsed += dt;
+      const t = Math.min(sw.elapsed / sw.lifetime, 1);
+      const s = 0.1 + (sw.maxScale - 0.1) * t;
+      sw.ring.scale.set(s, s, s);
+      sw.ring.material.opacity = 0.7 * (1 - t) * (1 - t);
+      if (t >= 1) {
+        sw.ring.visible = false;
+        shockwavePool.push(sw.ring);
+        activeShockwaves.splice(i, 1);
+      }
+    }
+  }
 
   function emitParticles(x, y, z, color, count, spread, speed, lifetime) {
     const c = new THREE.Color(color);
@@ -748,6 +864,28 @@ function init() {
     emitParticles(x, y, z, color, count, 1.0, 2.5, 0.3);
     /* Faint dark smoke wisp */
     if (!mobile) emitParticles(x, y + 0.1, z, 0x221100, 2, 0.4, 0.6, 0.6);
+    /* Directional spark ring */
+    const sparkCount = mobile ? 3 : 6;
+    const c = new THREE.Color(color);
+    for (let s = 0; s < sparkCount; s++) {
+      const angle = (s / sparkCount) * Math.PI * 2;
+      const idx = nextParticle % MAX_PARTICLES;
+      nextParticle++;
+      particlePositions[idx * 3] = x;
+      particlePositions[idx * 3 + 1] = y;
+      particlePositions[idx * 3 + 2] = z;
+      particleColors[idx * 3] = c.r;
+      particleColors[idx * 3 + 1] = c.g;
+      particleColors[idx * 3 + 2] = c.b;
+      particleSizes[idx] = 0.12;
+      const spd = 3.5;
+      particleVelocities.push({
+        vx: Math.cos(angle) * spd, vy: 0.5 + Math.random() * 0.5, vz: Math.sin(angle) * spd,
+        life: 0.2, maxLife: 0.2, idx
+      });
+    }
+    /* Bright white flash at impact center */
+    emitParticles(x, y, z, 0xffffff, mobile ? 1 : 2, 0.1, 0.3, 0.08);
   }
 
   /* Death explosion — larger, more dramatic with secondary ember ring */
@@ -761,8 +899,13 @@ function init() {
     emitParticles(x, y, z, 0xffffff, mobile ? 3 : 6, 0.5, 1.5, 0.2);
     /* Secondary glow-colored ember ring */
     if (!mobile) emitParticles(x, y, z, glowColor, 6, 2.0, 2.0, 0.7);
-    /* Upward soul wisp */
-    emitParticles(x, y + 0.2, z, 0x886644, mobile ? 2 : 4, 0.2, 1.8, 0.9);
+    /* Upward soul wisps — enhanced count and speed */
+    emitParticles(x, y + 0.2, z, 0x886644, mobile ? 3 : 8, 0.2, 2.5, 1.2);
+    /* Bright soul spark — fast-rising white-yellow (desktop only) */
+    if (!mobile) emitParticles(x, y + 0.3, z, 0xffffaa, 2, 0.1, 4.0, 0.5);
+    /* Shockwave ring — bigger for bosses/guardians */
+    const isBig = enemyType === "boss" || enemyType === "guardian";
+    spawnShockwave(x, y, z, glowColor, isBig ? 4.0 : 2.0, isBig ? 0.6 : 0.35);
   }
 
   /* Muzzle flash on tower orb — brighter, with secondary glow */
@@ -1057,7 +1200,14 @@ function init() {
             state.gold += r2; state.stats.kills++; state.stats.goldEarned += r2; updateGold(state);
           }
           scene.remove(p.mesh); state.projectiles.splice(i, 1);
-        } else { tmpVec3A.normalize(); p.mesh.position.addScaledVector(tmpVec3A, p.speed * dt); }
+        } else {
+          tmpVec3A.normalize(); p.mesh.position.addScaledVector(tmpVec3A, p.speed * dt);
+          p.trailCounter++;
+          if (p.trailCounter % (mobile ? 3 : 2) === 0) {
+            emitParticles(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z,
+              TOWER_TYPES[p.type]?.color || 0xffffff, 1, 0.15, 0.3, 0.25);
+          }
+        }
       }
 
       /* Clean up dead enemies */
@@ -1065,6 +1215,7 @@ function init() {
 
       /* Update VFX */
       updateParticles(dt);
+      updateShockwaves(dt);
       updateDamageFlashes(dt);
     }
 
