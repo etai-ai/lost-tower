@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { TILE, COLS, ROWS, W, H, TOWER_TYPES, SELL_REFUND, PATH_POINTS, WAVES, ENEMY_VISUALS } from "./constants.js";
+import { TILE, COLS, ROWS, W, H, TOWER_TYPES, SELL_REFUND, MAPS, WAVES, ENEMY_VISUALS } from "./constants.js";
 import { initAudio, resumeAudio, SFX } from "./audio.js";
 import { glowTex, floorTex, pathTex } from "./textures.js";
-import { gridToWorld, pathWorldPoints, isPathTile, tmpVec3A, tmpVec3B, isMobile, $ } from "./utils.js";
+import { gridToWorld, pathWorldPoints, isPathTile, initMap, tmpVec3A, tmpVec3B, isMobile, $ } from "./utils.js";
 import {
   getWaveInfo, getWavePreview, showToast, updateGold, updateLives, updateWaveUI,
   showGameOver, showVictory, enterEndless, startWave, buildTowerBar, selectTower,
@@ -17,9 +17,15 @@ let state = null;
 
 /* ─── INIT 3D GAME ─── */
 function init() {
+  /* Pick a random map */
+  const map = MAPS[Math.floor(Math.random() * MAPS.length)];
+  const activePoints = map.points;
+  initMap(activePoints);
+
   initAudio(); resumeAudio();
   $("title-screen").style.display = "none";
   $("game-screen").style.display = "";
+  setTimeout(() => showToast("~ " + map.name + " ~", 3500), 500);
 
   const el = $("game-mount");
 
@@ -79,8 +85,8 @@ function init() {
   });
 
   /* Entry & exit portals — dramatic rifts visible from overhead */
-  const entryPos = gridToWorld(PATH_POINTS[0][0], PATH_POINTS[0][1]);
-  const exitPos = gridToWorld(PATH_POINTS[PATH_POINTS.length-1][0], PATH_POINTS[PATH_POINTS.length-1][1]);
+  const entryPos = gridToWorld(activePoints[0][0], activePoints[0][1]);
+  const exitPos = gridToWorld(activePoints[activePoints.length-1][0], activePoints[activePoints.length-1][1]);
   const portalGeo = new THREE.TorusGeometry(0.85, 0.14, 10, 32);
   const portalInnerGeo = new THREE.TorusGeometry(0.65, 0.06, 8, 32);
 
@@ -400,7 +406,7 @@ function init() {
     const s = vis.scale;
 
     const group = new THREE.Group();
-    const startPos = gridToWorld(PATH_POINTS[0][0], PATH_POINTS[0][1]);
+    const startPos = gridToWorld(activePoints[0][0], activePoints[0][1]);
     group.position.copy(startPos);
     group.position.y = 0.15 + 0.25 * s;
 

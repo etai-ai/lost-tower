@@ -7,20 +7,30 @@ export function gridToWorld(col, row) {
   return new THREE.Vector3(col * TILE - W / 2 + TILE / 2, 0, row * TILE - H / 2 + TILE / 2);
 }
 
-/* Cache path points — allocated once, never changes */
-const cachedPathPoints = PATH_POINTS.map(([c, r]) => gridToWorld(c, r));
-export function pathWorldPoints() { return cachedPathPoints; }
+/* Mutable path caches — rebuilt when map changes */
+let cachedPathPoints = PATH_POINTS.map(([c, r]) => gridToWorld(c, r));
+let pathTileSet = new Set();
 
-/* Pre-compute path tile set for O(1) lookup */
-const pathTileSet = new Set();
-(function() {
-  for (let i = 0; i < PATH_POINTS.length - 1; i++) {
-    const [c1, r1] = PATH_POINTS[i], [c2, r2] = PATH_POINTS[i + 1];
-    if (c1 === c2) { const a = Math.min(r1, r2), b = Math.max(r1, r2); for (let r = a; r <= b; r++) pathTileSet.add(c1 + "," + r); }
-    else { const a = Math.min(c1, c2), b = Math.max(c1, c2); for (let c = a; c <= b; c++) pathTileSet.add(c + "," + r1); }
+function rebuildPathTileSet(points) {
+  const set = new Set();
+  for (let i = 0; i < points.length - 1; i++) {
+    const [c1, r1] = points[i], [c2, r2] = points[i + 1];
+    if (c1 === c2) { const a = Math.min(r1, r2), b = Math.max(r1, r2); for (let r = a; r <= b; r++) set.add(c1 + "," + r); }
+    else { const a = Math.min(c1, c2), b = Math.max(c1, c2); for (let c = a; c <= b; c++) set.add(c + "," + r1); }
   }
-})();
+  return set;
+}
 
+/* Initialize with default map */
+pathTileSet = rebuildPathTileSet(PATH_POINTS);
+
+/* Re-initialize path data for a new map */
+export function initMap(points) {
+  cachedPathPoints = points.map(([c, r]) => gridToWorld(c, r));
+  pathTileSet = rebuildPathTileSet(points);
+}
+
+export function pathWorldPoints() { return cachedPathPoints; }
 export function isPathTile(col, row) { return pathTileSet.has(col + "," + row); }
 
 /* Reusable Vector3 temporaries for hot-path calculations */
