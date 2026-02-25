@@ -160,6 +160,14 @@ function getWaveInfo(waveNum) {
   return { name: raw.name, groups: raw.groups, spawnList, enemies: spawnList.length };
 }
 
+/* Lightweight version for UI display — avoids building full spawnList */
+function getWavePreview(waveNum) {
+  const raw = waveNum <= WAVES.length ? WAVES[waveNum - 1] : generateEndlessWave(waveNum);
+  let total = 0;
+  for (const g of raw.groups) total += g.count;
+  return { name: raw.name, enemies: total };
+}
+
 const ENEMY_VISUALS = {
   shade: {
     bodyColor: 0x442244, emissive: 0x331133, emissiveIntensity: 0.6,
@@ -316,17 +324,24 @@ const SFX = {
 function gridToWorld(col, row) {
   return new THREE.Vector3(col * TILE - W / 2 + TILE / 2, 0, row * TILE - H / 2 + TILE / 2);
 }
-function pathWorldPoints() { return PATH_POINTS.map(([c, r]) => gridToWorld(c, r)); }
+/* Cache path points — allocated once, never changes */
+const cachedPathPoints = PATH_POINTS.map(([c, r]) => gridToWorld(c, r));
+function pathWorldPoints() { return cachedPathPoints; }
 
-function isPathTile(col, row) {
-  const pts = PATH_POINTS;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [c1, r1] = pts[i], [c2, r2] = pts[i + 1];
-    if (c1 === c2) { const a = Math.min(r1, r2), b = Math.max(r1, r2); if (col === c1 && row >= a && row <= b) return true; }
-    else { const a = Math.min(c1, c2), b = Math.max(c1, c2); if (row === r1 && col >= a && col <= b) return true; }
+/* Pre-compute path tile set for O(1) lookup */
+const pathTileSet = new Set();
+(function() {
+  for (let i = 0; i < PATH_POINTS.length - 1; i++) {
+    const [c1, r1] = PATH_POINTS[i], [c2, r2] = PATH_POINTS[i + 1];
+    if (c1 === c2) { const a = Math.min(r1, r2), b = Math.max(r1, r2); for (let r = a; r <= b; r++) pathTileSet.add(c1 + "," + r); }
+    else { const a = Math.min(c1, c2), b = Math.max(c1, c2); for (let c = a; c <= b; c++) pathTileSet.add(c + "," + r1); }
   }
-  return false;
-}
+})();
+function isPathTile(col, row) { return pathTileSet.has(col + "," + row); }
+
+/* Reusable Vector3 temporaries for hot-path calculations */
+const _tmpVec3A = new THREE.Vector3();
+const _tmpVec3B = new THREE.Vector3();
 
 /* ─── GLOW TEXTURE ─── */
 function glowTex() {
@@ -433,7 +448,7 @@ function updateWaveUI() {
   const prefix = isEndless ? "\u221E " : "";
 
   if (state.waveActive) {
-    const cur = getWaveInfo(state.wave);
+    const cur = getWavePreview(state.wave);
     el.textContent = prefix + "Wave " + state.wave + " \u2014 " + cur.name;
     el.style.cursor = "default"; el.style.opacity = "0.8";
   } else {
@@ -441,7 +456,7 @@ function updateWaveUI() {
     if (!state.endless && state.wave >= WAVES.length) {
       el.textContent = "All waves complete"; el.style.cursor = "default"; el.style.opacity = "0.8";
     } else {
-      const next = getWaveInfo(nextNum);
+      const next = getWavePreview(nextNum);
       el.textContent = "\u25B6 " + prefix + "Wave " + nextNum + " \u2014 " + next.name;
       el.style.cursor = "pointer"; el.style.opacity = "1";
     }
@@ -580,7 +595,7 @@ function showTowerPopup(tower, rangeCircle) {
   if (rangeCircle) {
     const pos = tower.group.position;
     rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-    rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(tower.range - 0.05, tower.range, 48);
+    setRangeCircleRange(tower.range);
     rangeCircle.visible = true;
   }
 }
@@ -772,6 +787,17 @@ function init() {
     new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
   );
   rangeCircle.rotation.x = -Math.PI / 2; rangeCircle.visible = false; rangeCircle.position.y = 0.02; scene.add(rangeCircle);
+
+  /* Cache range circle geometries to avoid per-mousemove allocation */
+  const rangeGeoCache = {};
+  let currentRangeKey = "3.4";
+  function setRangeCircleRange(range) {
+    const key = range.toFixed(2);
+    if (key === currentRangeKey) return;
+    if (!rangeGeoCache[key]) rangeGeoCache[key] = new THREE.RingGeometry(range - 0.05, range, 48);
+    rangeCircle.geometry = rangeGeoCache[key];
+    currentRangeKey = key;
+  }
 
   /* ─── WIRE POPUP BUTTONS ─── */
   const tpEl = $("tower-popup");
@@ -1068,8 +1094,8 @@ function init() {
       const a = pts[enemy.pathIndex], b = pts[enemy.pathIndex + 1];
       enemy.group.position.x = a.x + (b.x - a.x) * enemy.pathProgress;
       enemy.group.position.z = a.z + (b.z - a.z) * enemy.pathProgress;
-      const dir = new THREE.Vector3().subVectors(b, a).normalize();
-      enemy.group.lookAt(enemy.group.position.x + dir.x, 0.4, enemy.group.position.z + dir.z);
+      _tmpVec3A.subVectors(b, a).normalize();
+      enemy.group.lookAt(enemy.group.position.x + _tmpVec3A.x, 0.4, enemy.group.position.z + _tmpVec3A.z);
     }
   }
 
@@ -1078,16 +1104,16 @@ function init() {
   const mouse = new THREE.Vector2();
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
+  const _hitVec = new THREE.Vector3();
   function getGridFromXY(clientX, clientY) {
     const rect = el.getBoundingClientRect();
     mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    const hit = new THREE.Vector3();
-    raycaster.ray.intersectPlane(groundPlane, hit);
-    if (!hit) return null;
-    const col = Math.floor((hit.x + W / 2) / TILE);
-    const row = Math.floor((hit.z + H / 2) / TILE);
+    raycaster.ray.intersectPlane(groundPlane, _hitVec);
+    if (!_hitVec) return null;
+    const col = Math.floor((_hitVec.x + W / 2) / TILE);
+    const row = Math.floor((_hitVec.z + H / 2) / TILE);
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
     return { col, row };
   }
@@ -1121,7 +1147,7 @@ function init() {
       hoverRing.visible = false;
       const pos = existing.group.position;
       rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-      rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(existing.range - 0.05, existing.range, 48);
+      setRangeCircleRange(existing.range);
       rangeCircle.visible = true; return;
     }
     if (isPathTile(cell.col, cell.row)) { hoverRing.visible = false; rangeCircle.visible = false; return; }
@@ -1129,7 +1155,7 @@ function init() {
     hoverRing.position.x = pos.x; hoverRing.position.z = pos.z; hoverRing.visible = true;
     const s = TOWER_TYPES[state.selectedTower].range;
     rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-    rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(s - 0.05, s, 48);
+    setRangeCircleRange(s);
     rangeCircle.visible = true;
   }
 
@@ -1420,9 +1446,8 @@ function init() {
           if (!state.endless && state.wave >= WAVES.length) {
             state.victory = true; showVictory();
           } else {
-            const next = getWaveInfo(state.wave + 1);
-            const desc = next.groups.map(g => g.count + "\u00D7 " + (g.type.charAt(0).toUpperCase() + g.type.slice(1))).join(", ");
-            showToast("Next: " + desc, 3500);
+            const next = getWavePreview(state.wave + 1);
+            showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
             if (autoWave) {
               setTimeout(() => {
                 if (state.gameOver || (state.victory && !state.endless)) return;
@@ -1511,11 +1536,12 @@ function init() {
 
       state.towers.forEach(t => {
         t.cooldown -= dt; if (t.cooldown > 0) return;
-        const tPos = new THREE.Vector3(t.group.position.x, 0, t.group.position.z);
+        _tmpVec3A.set(t.group.position.x, 0, t.group.position.z);
         let closest = null, closestDist = t.range;
         state.enemies.forEach(e => {
           if (!e.alive) return;
-          const d = tPos.distanceTo(new THREE.Vector3(e.group.position.x, 0, e.group.position.z));
+          _tmpVec3B.set(e.group.position.x, 0, e.group.position.z);
+          const d = _tmpVec3A.distanceTo(_tmpVec3B);
           if (d < closestDist) { closestDist = d; closest = e; }
         });
         if (closest) { fireProjectile(t, closest); t.cooldown = t.rate; }
@@ -1524,15 +1550,16 @@ function init() {
       for (let i = state.projectiles.length - 1; i >= 0; i--) {
         const p = state.projectiles[i];
         if (!p.target.alive) { scene.remove(p.mesh); state.projectiles.splice(i, 1); continue; }
-        const dir = new THREE.Vector3().subVectors(p.target.group.position, p.mesh.position);
-        if (dir.length() < 0.3) {
+        _tmpVec3A.subVectors(p.target.group.position, p.mesh.position);
+        if (_tmpVec3A.length() < 0.3) {
           p.target.hp -= p.damage;
           if (p.type === "ice") p.target.slowTimer = 2.0;
           if (p.type === "arcane") {
-            let cc = 0; const hitPos = p.target.group.position.clone();
+            let cc = 0;
+            _tmpVec3B.copy(p.target.group.position);
             state.enemies.forEach(e => {
               if (!e.alive || e === p.target || cc >= 2) return;
-              if (e.group.position.distanceTo(hitPos) < 2.5) {
+              if (e.group.position.distanceTo(_tmpVec3B) < 2.5) {
                 e.hp -= p.damage * 0.5; flashEnemyDamage(e); cc++;
                 if (e.hp <= 0 && e.alive) {
                   spawnDeathVFX(e.group.position.x, e.group.position.y, e.group.position.z, e.type);
@@ -1563,10 +1590,10 @@ function init() {
             state.gold += p.target.reward; updateGold();
           }
           scene.remove(p.mesh); state.projectiles.splice(i, 1);
-        } else { dir.normalize(); p.mesh.position.addScaledVector(dir, p.speed * dt); }
+        } else { _tmpVec3A.normalize(); p.mesh.position.addScaledVector(_tmpVec3A, p.speed * dt); }
       }
 
-      state.enemies.forEach(e => { if (!e.alive && e.group.parent) scene.remove(e.group); });
+      /* Clean up dead enemies */
       state.enemies = state.enemies.filter(e => e.alive);
 
       /* Update VFX */
