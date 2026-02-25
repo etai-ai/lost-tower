@@ -39,7 +39,61 @@ const WAVES = [
   { enemies: 1,  hp: 2500, speed: 1.5, reward: 200, delay: 3.0, name: "The Sealed One",  type: "boss" },
 ];
 
-/* ─── ENEMY VISUAL DEFINITIONS ─── */
+/* ─── ENDLESS MODE WAVE GENERATOR ─── */
+const ENDLESS_TYPES = ["shade","wraith","golem","knight","swarm","warlord","spirit","guardian","voidwalker","boss"];
+const ENDLESS_NAMES = [
+  "Risen","Empowered","Ancient","Abyssal","Infernal","Spectral","Corrupted","Forsaken","Eldritch","Ascended",
+];
+const ENDLESS_BOSS_NAMES = [
+  "Herald of Ruin","Dread Colossus","Void Titan","Flame Archon","Frozen Leviathan",
+  "Stone Primarch","Shadow Overlord","Spirit Sovereign","Chaos Incarnate","The Unbound",
+];
+
+function generateEndlessWave(waveNum) {
+  const n = waveNum - WAVES.length; /* endless wave index: 1, 2, 3... */
+  const isBoss = n % 5 === 0;
+  const isMega = n % 10 === 0;
+
+  /* Scaling factors — exponential curves */
+  const hpScale = Math.pow(1.22, n);
+  const spdBase = 2.6 + Math.min(n * 0.12, 2.4); /* caps at 5.0 */
+  const countBase = isMega ? 2 : isBoss ? 3 : Math.min(8 + Math.floor(n * 1.2), 30);
+
+  /* Pick enemy type */
+  let type, name;
+  if (isMega) {
+    type = "boss";
+    name = ENDLESS_BOSS_NAMES[(Math.floor(n / 10) - 1) % ENDLESS_BOSS_NAMES.length];
+  } else if (isBoss) {
+    type = "guardian";
+    name = ENDLESS_BOSS_NAMES[(Math.floor(n / 5) - 1) % ENDLESS_BOSS_NAMES.length];
+  } else {
+    /* Cycle through non-boss types, picking based on wave */
+    const pool = ["shade","wraith","golem","knight","swarm","warlord","spirit","voidwalker"];
+    type = pool[(n - 1) % pool.length];
+    const prefix = ENDLESS_NAMES[(Math.floor((n - 1) / pool.length)) % ENDLESS_NAMES.length];
+    const baseName = WAVES.find(w => w.type === type)?.name || type;
+    name = prefix + " " + baseName;
+  }
+
+  const hp = isMega
+    ? Math.round(2500 * hpScale)
+    : isBoss
+      ? Math.round(700 * hpScale)
+      : Math.round((80 + n * 15) * hpScale);
+
+  const speed = isMega ? Math.min(1.5 + n * 0.04, 3.0) : isBoss ? Math.min(1.8 + n * 0.06, 3.5) : Math.min(spdBase, 5.0);
+  const reward = isMega ? Math.round(200 + n * 20) : isBoss ? Math.round(50 + n * 8) : Math.round(10 + n * 1.5);
+  const delay = isMega ? 2.5 : isBoss ? 1.5 : Math.max(0.2, 0.6 - n * 0.01);
+
+  return { enemies: countBase, hp, speed, reward, delay, name, type };
+}
+
+function getWaveInfo(waveNum) {
+  if (waveNum <= WAVES.length) return WAVES[waveNum - 1];
+  return generateEndlessWave(waveNum);
+}
+
 const ENEMY_VISUALS = {
   shade: {
     bodyColor: 0x442244, emissive: 0x331133, emissiveIntensity: 0.6,
@@ -305,26 +359,26 @@ function updateWaveUI() {
   const el = $("wave-info");
   const hudCenter = $("hud-center");
 
-  if (state.gameOver || state.victory) {
-    hudCenter.style.display = "none";
-    return;
-  }
+  if (state.gameOver) { hudCenter.style.display = "none"; return; }
+  if (state.victory && !state.endless) { hudCenter.style.display = "none"; return; }
   hudCenter.style.display = "";
 
+  const isEndless = state.endless || state.wave > WAVES.length;
+  const prefix = isEndless ? "\u221E " : "";
+
   if (state.waveActive) {
-    const cur = WAVES[state.wave - 1];
-    el.textContent = "Wave " + state.wave + " \u2014 " + cur.name;
-    el.style.cursor = "default";
-    el.style.opacity = "0.8";
-  } else if (state.wave < WAVES.length) {
-    const next = WAVES[state.wave];
-    el.textContent = "\u25B6 Wave " + (state.wave + 1) + " \u2014 " + next.name;
-    el.style.cursor = "pointer";
-    el.style.opacity = "1";
+    const cur = getWaveInfo(state.wave);
+    el.textContent = prefix + "Wave " + state.wave + " \u2014 " + cur.name;
+    el.style.cursor = "default"; el.style.opacity = "0.8";
   } else {
-    el.textContent = "All waves complete";
-    el.style.cursor = "default";
-    el.style.opacity = "0.8";
+    const nextNum = state.wave + 1;
+    if (!state.endless && state.wave >= WAVES.length) {
+      el.textContent = "All waves complete"; el.style.cursor = "default"; el.style.opacity = "0.8";
+    } else {
+      const next = getWaveInfo(nextNum);
+      el.textContent = "\u25B6 " + prefix + "Wave " + nextNum + " \u2014 " + next.name;
+      el.style.cursor = "pointer"; el.style.opacity = "1";
+    }
   }
 }
 
@@ -382,23 +436,46 @@ function selectTower(type) {
 
 function showGameOver() {
   $("game-over").style.display = "";
-  $("game-over-wave").textContent = "The temple has been lost. Wave " + state.wave + ".";
+  if (state.endless) {
+    $("game-over-wave").textContent = "Endless Wave " + state.wave + " reached \u2014 " + state.towers.length + " towers built";
+  } else {
+    $("game-over-wave").textContent = "The temple has been lost. Wave " + state.wave + ".";
+  }
   updateWaveUI();
   SFX.gameOver();
 }
 
 function showVictory() {
   $("victory-screen").style.display = "";
-  $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
+  if (state.endless) {
+    /* Should not reach here in endless — game ends on game over */
+  } else {
+    $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
+    $("endless-btn").style.display = "";
+  }
   updateWaveUI();
   SFX.victory();
 }
 
+function enterEndless() {
+  $("victory-screen").style.display = "none";
+  state.victory = false;
+  state.endless = true;
+  state.lives = Math.max(state.lives, 10); /* restore at least 10 lives */
+  state.gold += 100; /* bonus gold for entering endless */
+  updateGold(); updateLives(); updateWaveUI();
+  showToast("\u{1F300} Endless Mode \u2014 +100g +10\u2665", 3500);
+  if (autoWave) {
+    setTimeout(() => { if (!state.gameOver) startWave(); }, 2000);
+  }
+}
+
 function startWave() {
-  if (!state || state.waveActive || state.gameOver || state.victory) return;
-  if (state.wave >= WAVES.length) return;
+  if (!state || state.waveActive || state.gameOver) return;
+  if (state.victory && !state.endless) return;
+  /* Campaign: capped at WAVES.length. Endless: unlimited. */
+  if (!state.endless && state.wave >= WAVES.length) return;
   state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
-  const w = WAVES[state.wave - 1];
   updateWaveUI();
   SFX.waveStart();
 }
@@ -651,7 +728,7 @@ function init() {
     towers: [], enemies: [], projectiles: [],
     gold: 150, lives: 20, wave: 0,
     waveActive: false, spawnTimer: 0, spawned: 0, enemiesAlive: 0,
-    gameOver: false, victory: false, selectedTower: "fire",
+    gameOver: false, victory: false, endless: false, selectedTower: "fire",
     towerMeshMap: new Map(),
   };
 
@@ -957,7 +1034,7 @@ function init() {
   }
 
   function tryPlaceTower(clientX, clientY) {
-    if (state.gameOver || state.victory) return;
+    if (state.gameOver || (state.victory && !state.endless)) return;
     const cell = getGridFromXY(clientX, clientY);
     if (!cell) { hideTowerPopup(rangeCircle); return; }
     const { col, row } = cell;
@@ -1240,7 +1317,7 @@ function init() {
     camera.position.y = camHeight;
     camera.lookAt(0, 0, 3);
 
-    if (!state.gameOver && !state.victory) {
+    if (!state.gameOver && !(state.victory && !state.endless)) {
       torchLights.forEach((tl, i) => {
         const base = i === 4 ? 120 : (i >= 5 ? 70 : 60);
         tl.intensity = base + Math.sin(time*8+i*3)*10 + Math.sin(time*13+i)*8;
@@ -1269,7 +1346,7 @@ function init() {
       });
 
       if (state.waveActive) {
-        const waveInfo = WAVES[state.wave - 1];
+        const waveInfo = getWaveInfo(state.wave);
         if (waveInfo && state.spawned < waveInfo.enemies) {
           state.spawnTimer -= dt;
           if (state.spawnTimer <= 0) {
@@ -1280,13 +1357,14 @@ function init() {
         }
         if (state.spawned >= (waveInfo?.enemies || 0) && state.enemiesAlive <= 0) {
           state.waveActive = false; updateWaveUI();
-          if (state.wave >= WAVES.length) { state.victory = true; showVictory(); }
-          else {
-            const next = WAVES[state.wave];
+          if (!state.endless && state.wave >= WAVES.length) {
+            state.victory = true; showVictory();
+          } else {
+            const next = getWaveInfo(state.wave + 1);
             showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
             if (autoWave) {
               setTimeout(() => {
-                if (state.gameOver || state.victory) return;
+                if (state.gameOver || (state.victory && !state.endless)) return;
                 startWave();
               }, 2000);
             }
@@ -1453,3 +1531,4 @@ $("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); p
 $("mute-btn").addEventListener("click", () => { muted = !muted; updateMuteBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
 $("replay-btn").addEventListener("click", () => window.location.reload());
+$("endless-btn").addEventListener("click", () => { resumeAudio(); enterEndless(); });

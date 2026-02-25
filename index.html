@@ -178,6 +178,12 @@
         color: #d4c8a0; cursor: pointer; font-family: 'Georgia', serif; border-radius: 6px;
         -webkit-tap-highlight-color: transparent;
       }
+      .overlay-btns { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+      .overlay-btns button { margin-top: 0; }
+      #endless-btn {
+        border-color: #ffcc44; color: #ffcc44;
+        text-shadow: 0 0 12px rgba(255,200,60,0.3);
+      }
     </style>
   </head>
   <body>
@@ -262,7 +268,10 @@
         <div class="overlay-title">SEALED</div>
         <div class="overlay-sub">The breach is sealed. The temple is safe.</div>
         <div id="victory-stats"></div>
-        <button id="replay-btn">Play Again</button>
+        <div class="overlay-btns">
+          <button id="endless-btn">Enter the Abyss</button>
+          <button id="replay-btn">Play Again</button>
+        </div>
       </div>
     </div>
 
