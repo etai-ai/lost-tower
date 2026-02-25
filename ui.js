@@ -92,8 +92,15 @@ export function getWaveInfo(waveNum) {
 export function getWavePreview(waveNum) {
   const raw = waveNum <= WAVES.length ? WAVES[waveNum - 1] : generateEndlessWave(waveNum);
   let total = 0;
-  for (const g of raw.groups) total += g.count;
-  return { name: raw.name, enemies: total };
+  const mobCounts = {};
+  for (const g of raw.groups) {
+    total += g.count;
+    mobCounts[g.type] = (mobCounts[g.type] || 0) + g.count;
+  }
+  const breakdown = Object.entries(mobCounts)
+    .map(([t, c]) => c + "\u00D7 " + t[0].toUpperCase() + t.slice(1))
+    .join(", ");
+  return { name: raw.name, enemies: total, breakdown };
 }
 
 /* ─── DOM HELPERS ─── */
@@ -201,10 +208,16 @@ export function selectTower(state, type) {
 
 export function showGameOver(state) {
   $("game-over").style.display = "";
+  const s = state.stats;
   if (state.endless) {
-    $("game-over-wave").textContent = "Endless Wave " + state.wave + " reached — " + state.towers.length + " towers built";
+    $("game-over-wave").textContent = "Endless Wave " + state.wave + " reached";
+    $("game-over-stats").innerHTML =
+      s.kills + " kills · " + s.goldEarned + " gold earned<br>" +
+      s.towersBuilt + " towers built · " + s.upgrades + " upgrades<br>" +
+      state.towers.length + " towers standing · " + state.gold + " gold left";
   } else {
     $("game-over-wave").textContent = "The temple has been lost. Wave " + state.wave + ".";
+    $("game-over-stats").innerHTML = "";
   }
   updateWaveUI(state);
   SFX.gameOver();
@@ -212,8 +225,11 @@ export function showGameOver(state) {
 
 export function showVictory(state) {
   if (state.endless) return;
+  const s = state.stats;
   $("victory-screen").style.display = "";
-  $("victory-stats").textContent = state.towers.length + " towers · " + state.gold + " gold left";
+  $("victory-stats").innerHTML =
+    s.kills + " kills · " + s.goldEarned + " gold earned<br>" +
+    s.towersBuilt + " towers built · " + s.upgrades + " upgrades · " + state.gold + " gold left";
   $("endless-btn").style.display = "";
   updateWaveUI(state);
   SFX.victory();
@@ -299,7 +315,7 @@ export function upgradeTower(rangeCircle, setRangeCircleRange, state) {
   if (lvl >= 1 + info.upgrades.length) return;
   const upgrade = info.upgrades[lvl - 1];
   if (state.gold < upgrade.cost) { showToast("Not enough gold!"); return; }
-  state.gold -= upgrade.cost; tower.totalInvested += upgrade.cost; tower.level = lvl + 1;
+  state.gold -= upgrade.cost; tower.totalInvested += upgrade.cost; tower.level = lvl + 1; state.stats.upgrades++;
   tower.damage = upgrade.damage; tower.rate = upgrade.rate; tower.range = upgrade.range;
   const lvlUp = tower.level - 1;
   /* Body: wider, taller, brighter */
@@ -319,7 +335,6 @@ export function upgradeTower(rangeCircle, setRangeCircleRange, state) {
   /* Light: brighter, wider reach */
   if (tower.light) { tower.light.position.y = orbBaseY; tower.light.intensity = 30 + lvlUp * 30; tower.light.distance = 10 + lvlUp * 4; }
   updateGold(state); SFX.towerUpgrade();
-  showToast(info.name + " → Lv " + tower.level + "!");
   showTowerPopup(tower, rangeCircle, setRangeCircleRange, state);
 }
 

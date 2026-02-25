@@ -58,7 +58,7 @@
         width: 100%; height: 100vh; position: relative; overflow: hidden;
         touch-action: none; user-select: none; -webkit-user-select: none;
       }
-      #game-mount { width: 100%; height: 100%; cursor: crosshair; }
+      #game-mount { width: 100%; height: 100%; cursor: crosshair; position: relative; z-index: 0; }
       body.mobile #game-mount { cursor: default; }
 
       /* ─── HUD ─── */
@@ -182,6 +182,26 @@
         border-color: #ffcc44; color: #ffcc44;
         text-shadow: 0 0 12px rgba(255,200,60,0.3);
       }
+
+      /* ─── Vignette: torn-corner mask ─── */
+      #game-screen::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+        background:
+          /* main oval window */
+          radial-gradient(ellipse 70% 65% at 50% 50%, transparent 50%, rgba(0,0,0,0.95) 100%),
+          /* chew into top-left */
+          radial-gradient(ellipse 60% 50% at 12% 10%, rgba(0,0,0,0.9) 0%, transparent 70%),
+          /* chew into top-right */
+          radial-gradient(ellipse 50% 55% at 90% 8%, rgba(0,0,0,0.9) 0%, transparent 65%),
+          /* chew into bottom-left */
+          radial-gradient(ellipse 55% 50% at 8% 92%, rgba(0,0,0,0.9) 0%, transparent 60%),
+          /* chew into bottom-right */
+          radial-gradient(ellipse 50% 60% at 88% 90%, rgba(0,0,0,0.9) 0%, transparent 70%),
+          /* extra nibble mid-left */
+          radial-gradient(ellipse 35% 30% at 3% 55%, rgba(0,0,0,0.8) 0%, transparent 70%),
+          /* extra nibble mid-right */
+          radial-gradient(ellipse 30% 35% at 97% 45%, rgba(0,0,0,0.8) 0%, transparent 70%);
+      }
     </style>
   </head>
   <body>
@@ -258,6 +278,7 @@
       <div id="game-over" class="overlay" style="display:none">
         <div class="overlay-title">OVERRUN</div>
         <div class="overlay-sub" id="game-over-wave"></div>
+        <div id="game-over-stats" style="color:#8a7e60; margin-top:8px; font-size:13px; line-height:1.8; text-align:center;"></div>
         <button id="restart-btn">Try Again</button>
       </div>
 

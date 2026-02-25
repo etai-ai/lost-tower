@@ -207,6 +207,7 @@ function init() {
     gold: 150, lives: 20, wave: 0,
     waveActive: false, spawnTimer: 0, spawned: 0, enemiesAlive: 0,
     gameOver: false, victory: false, endless: false, currentWaveInfo: null, selectedTower: "fire",
+    stats: { kills: 0, goldEarned: 0, towersBuilt: 0, upgrades: 0 },
     towerMeshMap: new Map(),
   };
 
@@ -257,8 +258,8 @@ function init() {
   };
   /* Shared small geometries */
   const enemyEyeGeo = new THREE.SphereGeometry(0.05, 6, 6);
-  const enemyHpBgGeo = new THREE.PlaneGeometry(0.7, 0.08);
-  const enemyHpFillGeo = new THREE.PlaneGeometry(0.68, 0.06);
+  const enemyHpBgGeo = new THREE.PlaneGeometry(0.7, 0.12);
+  const enemyHpFillGeo = new THREE.PlaneGeometry(0.68, 0.09);
   const enemyHpBgMat = new THREE.MeshBasicMaterial({ color: 0x220000, transparent: true, opacity: 0.7 });
 
   /* Knight spike geometry */
@@ -325,7 +326,7 @@ function init() {
       level: 1, damage: info.damage, rate: info.rate, range: info.range,
       totalInvested: info.cost, orbBaseY: 2.2,
     };
-    state.towers.push(tower);
+    state.towers.push(tower); state.stats.towersBuilt++;
     state.towerMeshMap.set(col + "," + row, tower);
     return tower;
   }
@@ -480,12 +481,22 @@ function init() {
       if (state.lives <= 0 && !state.gameOver) { state.gameOver = true; showGameOver(state); }
       return;
     }
-    const from = pts[enemy.pathIndex], to = pts[enemy.pathIndex + 1];
-    const dist = from.distanceTo(to);
     const speedMod = enemy.slowTimer > 0 ? 0.6 : 1;
-    enemy.pathProgress += (enemy.speed * speedMod * dt) / dist;
     if (enemy.slowTimer > 0) enemy.slowTimer -= dt;
-    if (enemy.pathProgress >= 1) { enemy.pathProgress -= 1; enemy.pathIndex++; }
+    let remaining = enemy.speed * speedMod * dt;
+    while (remaining > 0 && enemy.pathIndex < pts.length - 1) {
+      const from = pts[enemy.pathIndex], to = pts[enemy.pathIndex + 1];
+      const dist = from.distanceTo(to);
+      const needed = (1 - enemy.pathProgress) * dist;
+      if (remaining >= needed) {
+        remaining -= needed;
+        enemy.pathProgress = 0;
+        enemy.pathIndex++;
+      } else {
+        enemy.pathProgress += remaining / dist;
+        remaining = 0;
+      }
+    }
     if (enemy.pathIndex < pts.length - 1) {
       const a = pts[enemy.pathIndex], b = pts[enemy.pathIndex + 1];
       enemy.group.position.x = a.x + (b.x - a.x) * enemy.pathProgress;
@@ -901,7 +912,7 @@ function init() {
             state.victory = true; showVictory(state);
           } else {
             const next = getWavePreview(state.wave + 1);
-            showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
+            showToast("Next: " + next.breakdown, 3500);
             if (autoWave) {
               setTimeout(() => {
                 if (state.gameOver || (state.victory && !state.endless)) return;
@@ -1019,7 +1030,8 @@ function init() {
                   spawnDeathVFX(e.group.position.x, e.group.position.y, e.group.position.z, e.type);
                   SFX.enemyDeath();
                   e.alive = false; scene.remove(e.group); state.enemiesAlive--;
-                  state.gold += e.reward; updateGold(state);
+                  const r1 = Math.floor(e.reward * 0.95);
+                  state.gold += r1; state.stats.kills++; state.stats.goldEarned += r1; updateGold(state);
                 }
               }
             });
@@ -1041,7 +1053,8 @@ function init() {
             spawnDeathVFX(hp.x, hp.y, hp.z, p.target.type);
             SFX.enemyDeath();
             p.target.alive = false; scene.remove(p.target.group); state.enemiesAlive--;
-            state.gold += p.target.reward; updateGold(state);
+            const r2 = Math.floor(p.target.reward * 0.95);
+            state.gold += r2; state.stats.kills++; state.stats.goldEarned += r2; updateGold(state);
           }
           scene.remove(p.mesh); state.projectiles.splice(i, 1);
         } else { tmpVec3A.normalize(); p.mesh.position.addScaledVector(tmpVec3A, p.speed * dt); }
