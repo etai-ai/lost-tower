@@ -9,6 +9,10 @@ export let paused = false;
 export let muted = false;
 let toastTimer = null;
 let selectedTowerObj = null;
+let _stateRef = null;
+let _rangeCircleRef = null;
+export function setStateRef(s) { _stateRef = s; }
+export function setRangeCircleRef(rc) { _rangeCircleRef = rc; }
 
 export function setSpeed(value) { speed = value; }
 export function setAutoWave(value) { autoWave = value; }
@@ -182,7 +186,7 @@ export function updateMuteBtn() {
 
 export function selectTower(state, type) {
   if (state) state.selectedTower = type;
-  if (selectedTowerObj) hideTowerPopup(null);
+  if (selectedTowerObj) hideTowerPopup(_rangeCircleRef);
   document.querySelectorAll(".tower-btn").forEach(btn => {
     const sel = btn.dataset.type === type;
     if (isMobile()) {
@@ -356,7 +360,7 @@ export function buildTowerBar() {
         '<div style="font-size:12px;color:#ffcc44;margin-top:3px">' + info.cost + 'g</div>';
     }
 
-    btn.addEventListener("click", () => selectTower(null, key));
+    btn.addEventListener("click", () => selectTower(_stateRef, key));
     bar.appendChild(btn);
   });
 }

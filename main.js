@@ -9,7 +9,7 @@ import {
   showTowerPopup, hideTowerPopup, upgradeTower, sellTower,
   speed, autoWave, paused, muted, setSpeed, setAutoWave, setPaused, setMuted,
   updatePauseBtn, updateAutoBtn, updateSpeedBtn, updateMuteBtn,
-  getSelectedTower, clearSelectedTower
+  getSelectedTower, clearSelectedTower, setStateRef, setRangeCircleRef
 } from "./ui.js";
 
 const mobile = isMobile();
@@ -179,6 +179,7 @@ function init() {
     new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
   );
   rangeCircle.rotation.x = -Math.PI / 2; rangeCircle.visible = false; rangeCircle.position.y = 0.02; scene.add(rangeCircle);
+  setRangeCircleRef(rangeCircle);
 
   /* Cache range circle geometries to avoid per-mousemove allocation */
   const rangeGeoCache = {};
@@ -208,6 +209,9 @@ function init() {
     gameOver: false, victory: false, endless: false, currentWaveInfo: null, selectedTower: "fire",
     towerMeshMap: new Map(),
   };
+
+  /* Wire up UI state reference */
+  setStateRef(state);
 
   /* Select the default tower visually */
   selectTower(state, "fire");
@@ -1073,9 +1077,9 @@ updateMuteBtn();
 
 $("start-btn").addEventListener("click", init);
 $("wave-info").addEventListener("click", () => { resumeAudio(); if (state) startWave(state); });
-$("auto-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); autoWave = !autoWave; updateAutoBtn(); });
-$("speed-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); speed = speed >= 3 ? 1 : speed + 1; updateSpeedBtn(); });
-$("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); paused = !paused; updatePauseBtn(); });
-$("mute-btn").addEventListener("click", () => { muted = !muted; updateMuteBtn(); });
+$("auto-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); setAutoWave(!autoWave); updateAutoBtn(); });
+$("speed-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); setSpeed(speed >= 3 ? 1 : speed + 1); updateSpeedBtn(); });
+$("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); setPaused(!paused); updatePauseBtn(); });
+$("mute-btn").addEventListener("click", () => { setMuted(!muted); updateMuteBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
 $("endless-btn").addEventListener("click", () => { resumeAudio(); if (state) enterEndless(state); });
