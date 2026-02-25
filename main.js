@@ -688,8 +688,8 @@ function init() {
   const el = $("game-mount");
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0908);
-  scene.fog = new THREE.FogExp2(0x0a0908, 0.018);
+  scene.background = new THREE.Color(0x060504);
+  scene.fog = new THREE.FogExp2(0x060504, 0.015);
 
   const camera = new THREE.PerspectiveCamera(55, el.clientWidth / el.clientHeight, 0.1, 200);
   camera.position.set(0, 24, 18);
@@ -703,7 +703,7 @@ function init() {
   renderer.shadowMap.enabled = !mobile;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.4;
+  renderer.toneMappingExposure = 1.8;
   el.appendChild(renderer.domElement);
 
   /* Materials */
@@ -727,31 +727,76 @@ function init() {
     }
   }
 
-  /* Path runes */
+  /* Path runes — ancient glowing waypoint markers */
   const runeGeo = new THREE.RingGeometry(0.05, 0.12, 6);
-  const runeMat = new THREE.MeshStandardMaterial({ color: 0x8a7e60, emissive: 0x4a3e20, emissiveIntensity: 0.5, side: THREE.DoubleSide });
-  pathWorldPoints().forEach(p => {
+  const runeGeo2 = new THREE.RingGeometry(0.18, 0.22, 6);
+  const runeMat = new THREE.MeshStandardMaterial({ color: 0x8a7e60, emissive: 0x5a4e30, emissiveIntensity: 0.8, side: THREE.DoubleSide });
+  const runeMat2 = new THREE.MeshStandardMaterial({ color: 0x665540, emissive: 0x332a18, emissiveIntensity: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+  pathWorldPoints().forEach((p, i) => {
     const rune = new THREE.Mesh(runeGeo, runeMat);
     rune.rotation.x = -Math.PI / 2; rune.position.set(p.x, 0.02, p.z); scene.add(rune);
+    /* Outer decorative ring on every other waypoint */
+    if (i % 2 === 0) {
+      const rune2 = new THREE.Mesh(runeGeo2, runeMat2);
+      rune2.rotation.x = -Math.PI / 2; rune2.position.set(p.x, 0.015, p.z); scene.add(rune2);
+    }
   });
 
-  /* Entry & exit portals */
+  /* Entry & exit portals — dramatic rifts visible from overhead */
   const entryPos = gridToWorld(PATH_POINTS[0][0], PATH_POINTS[0][1]);
   const exitPos = gridToWorld(PATH_POINTS[PATH_POINTS.length-1][0], PATH_POINTS[PATH_POINTS.length-1][1]);
-  const portalGeo = new THREE.TorusGeometry(0.6, 0.1, 8, 24);
+  const portalGeo = new THREE.TorusGeometry(0.85, 0.14, 10, 32);
+  const portalInnerGeo = new THREE.TorusGeometry(0.65, 0.06, 8, 32);
 
-  const entryPortal = new THREE.Mesh(portalGeo, new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 1.5, transparent: true, opacity: 0.7 }));
+  /* Entry portal — ominous red rift */
+  const entryPortal = new THREE.Mesh(portalGeo, new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 3.0, transparent: true, opacity: 0.85 }));
   entryPortal.rotation.x = -Math.PI / 2; entryPortal.position.set(entryPos.x, 0.3, entryPos.z); scene.add(entryPortal);
-  const entryLight = new THREE.PointLight(0xff4444, 80, 12); entryLight.position.set(entryPos.x, 1, entryPos.z); scene.add(entryLight);
+  const entryRing2 = new THREE.Mesh(portalInnerGeo, new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff4400, emissiveIntensity: 4.0, transparent: true, opacity: 0.6 }));
+  entryRing2.rotation.x = -Math.PI / 2; entryRing2.position.set(entryPos.x, 0.4, entryPos.z); scene.add(entryRing2);
+  const portalDiscGeo = new THREE.CircleGeometry(0.65, 32);
+  const entryDisc = new THREE.Mesh(portalDiscGeo, new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
+  entryDisc.rotation.x = -Math.PI / 2; entryDisc.position.set(entryPos.x, 0.28, entryPos.z); scene.add(entryDisc);
+  /* Large glow sprite — most visible element from overhead */
+  const entrySprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: 0xff3300, transparent: true, opacity: 0.6 }));
+  entrySprite.scale.set(4.0, 4.0, 1); entrySprite.position.set(entryPos.x, 0.8, entryPos.z); scene.add(entrySprite);
+  const entryLight = new THREE.PointLight(0xff4444, 160, 18); entryLight.position.set(entryPos.x, 2.5, entryPos.z); scene.add(entryLight);
+  const entryGlow = new THREE.PointLight(0xff2200, 70, 8); entryGlow.position.set(entryPos.x, 0.3, entryPos.z); scene.add(entryGlow);
 
-  const exitPortal = new THREE.Mesh(portalGeo, new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22dd22, emissiveIntensity: 1.5, transparent: true, opacity: 0.7 }));
+  /* Exit portal — eerie green */
+  const exitPortal = new THREE.Mesh(portalGeo, new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22dd22, emissiveIntensity: 3.0, transparent: true, opacity: 0.85 }));
   exitPortal.rotation.x = -Math.PI / 2; exitPortal.position.set(exitPos.x, 0.3, exitPos.z); scene.add(exitPortal);
-  const exitLight = new THREE.PointLight(0x44ff44, 80, 12); exitLight.position.set(exitPos.x, 1, exitPos.z); scene.add(exitLight);
+  const exitRing2 = new THREE.Mesh(portalInnerGeo, new THREE.MeshStandardMaterial({ color: 0x88ffaa, emissive: 0x44dd66, emissiveIntensity: 4.0, transparent: true, opacity: 0.6 }));
+  exitRing2.rotation.x = -Math.PI / 2; exitRing2.position.set(exitPos.x, 0.4, exitPos.z); scene.add(exitRing2);
+  const exitDisc = new THREE.Mesh(portalDiscGeo, new THREE.MeshBasicMaterial({ color: 0x22ff44, transparent: true, opacity: 0.25, side: THREE.DoubleSide }));
+  exitDisc.rotation.x = -Math.PI / 2; exitDisc.position.set(exitPos.x, 0.28, exitPos.z); scene.add(exitDisc);
+  const exitSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, color: 0x22dd44, transparent: true, opacity: 0.5 }));
+  exitSprite.scale.set(3.5, 3.5, 1); exitSprite.position.set(exitPos.x, 0.8, exitPos.z); scene.add(exitSprite);
+  const exitLight = new THREE.PointLight(0x44ff44, 140, 18); exitLight.position.set(exitPos.x, 2.5, exitPos.z); scene.add(exitLight);
+  const exitGlow = new THREE.PointLight(0x22dd22, 60, 8); exitGlow.position.set(exitPos.x, 0.3, exitPos.z); scene.add(exitGlow);
 
-  /* Lighting */
-  scene.add(new THREE.AmbientLight(0x1a1510, 3.0));
+  /* ─── PATH RUNE LIGHTS — warm glow along the path bends ─── */
+  const runeLights = [];
+  pathWorldPoints().forEach((p, i) => {
+    if (i % 2 !== 0) return;
+    const rl = new THREE.PointLight(0x886633, 18, 5.5);
+    rl.position.set(p.x, 0.6, p.z); scene.add(rl);
+    runeLights.push(rl);
+  });
+
+  /* Lighting — lost chamber atmosphere */
+  scene.add(new THREE.AmbientLight(0x1a1510, 2.0));
+  const dirLight = new THREE.DirectionalLight(0x332211, 1.5);
+  dirLight.position.set(-5, 12, -3); scene.add(dirLight);
+  const fillLight = new THREE.HemisphereLight(0x111018, 0x0a0908, 0.6);
+  scene.add(fillLight);
   const torchData = [[-W/2+1,4,-H/2+1],[W/2-1,4,-H/2+1],[-W/2+1,4,H/2-1],[W/2-1,4,H/2-1],[0,5,0],[-W/4,4.5,0],[W/4,4.5,0],[0,4.5,-H/4],[0,4.5,H/4]];
   const torchLights = [];
+  const torchFlames = []; /* visible flame meshes */
+  const flameGeo = new THREE.SphereGeometry(0.12, 6, 6);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8833, transparent: true, opacity: 0.7 });
+  const flameCoreMat = new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.9 });
+  const flameCoreGeo = new THREE.SphereGeometry(0.06, 4, 4);
+
   torchData.forEach(([x,y,z], i) => {
     const tl = new THREE.PointLight(0xff8844, i===4?120:60, 40);
     tl.position.set(x,y,z);
@@ -760,20 +805,31 @@ function init() {
     if (i < 4) {
       const sconce = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,0.4,8), darkStoneMat);
       sconce.position.set(x,y-0.8,z); scene.add(sconce);
+      /* Visible flame on sconce */
+      const flame = new THREE.Mesh(flameGeo, flameMat.clone());
+      flame.position.set(x, y - 0.35, z); scene.add(flame);
+      const core = new THREE.Mesh(flameCoreGeo, flameCoreMat.clone());
+      core.position.set(x, y - 0.3, z); scene.add(core);
+      torchFlames.push({ flame, core, baseY: y - 0.35 });
     }
   });
 
-  /* Dust particles */
-  const dustCount = mobile ? 150 : 400;
+  /* Dust particles — ancient chamber atmosphere */
+  const dustCount = mobile ? 200 : 500;
   const dustGeo = new THREE.BufferGeometry();
   const dustPos = new Float32Array(dustCount * 3);
   const dustVel = new Float32Array(dustCount * 3);
+  const dustColors = new Float32Array(dustCount * 3);
   for (let i = 0; i < dustCount; i++) {
     dustPos[i*3] = (Math.random()-0.5)*W; dustPos[i*3+1] = Math.random()*8; dustPos[i*3+2] = (Math.random()-0.5)*H;
     dustVel[i*3] = (Math.random()-0.5)*0.004; dustVel[i*3+1] = (Math.random()-0.5)*0.003; dustVel[i*3+2] = (Math.random()-0.5)*0.004;
+    /* Warm dust tones — aged gold to pale amber */
+    const warmth = 0.6 + Math.random() * 0.4;
+    dustColors[i*3] = 0.8 * warmth; dustColors[i*3+1] = 0.65 * warmth; dustColors[i*3+2] = 0.45 * warmth;
   }
   dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-  scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xccaa88, size: 0.06, transparent: true, opacity: 0.35 })));
+  dustGeo.setAttribute("color", new THREE.BufferAttribute(dustColors, 3));
+  scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.4, sizeAttenuation: true })));
 
   /* Hover indicator */
   const hoverRing = new THREE.Mesh(
@@ -1255,7 +1311,7 @@ function init() {
   /* ══════════════════════════════════════════════════════
      VFX PARTICLE SYSTEM
      ══════════════════════════════════════════════════════ */
-  const MAX_PARTICLES = mobile ? 200 : 500;
+  const MAX_PARTICLES = mobile ? 250 : 700;
   const particlePositions = new Float32Array(MAX_PARTICLES * 3);
   const particleColors = new Float32Array(MAX_PARTICLES * 3);
   const particleSizes = new Float32Array(MAX_PARTICLES);
@@ -1334,33 +1390,43 @@ function init() {
   }
 
   /* ─── VFX HELPERS ─── */
-  /* Impact burst when projectile hits */
+  /* Impact burst when projectile hits — element-colored sparks + faint smoke */
   function spawnHitVFX(x, y, z, towerType) {
     const color = TOWER_TYPES[towerType]?.color || 0xffffff;
     const count = mobile ? 4 : 8;
     emitParticles(x, y, z, color, count, 1.0, 2.5, 0.3);
+    /* Faint dark smoke wisp */
+    if (!mobile) emitParticles(x, y + 0.1, z, 0x221100, 2, 0.4, 0.6, 0.6);
   }
 
-  /* Death explosion */
+  /* Death explosion — larger, more dramatic with secondary ember ring */
   function spawnDeathVFX(x, y, z, enemyType) {
     const vis = ENEMY_VISUALS[enemyType];
     const color = vis ? vis.bodyColor : 0xff4444;
-    const count = mobile ? 8 : 16;
+    const glowColor = vis ? vis.glowColor : 0xff8844;
+    const count = mobile ? 8 : 18;
     emitParticles(x, y, z, color, count, 1.5, 3.5, 0.5);
     /* White core flash */
     emitParticles(x, y, z, 0xffffff, mobile ? 3 : 6, 0.5, 1.5, 0.2);
+    /* Secondary glow-colored ember ring */
+    if (!mobile) emitParticles(x, y, z, glowColor, 6, 2.0, 2.0, 0.7);
+    /* Upward soul wisp */
+    emitParticles(x, y + 0.2, z, 0x886644, mobile ? 2 : 4, 0.2, 1.8, 0.9);
   }
 
-  /* Muzzle flash on tower orb */
+  /* Muzzle flash on tower orb — brighter, with secondary glow */
   function spawnMuzzleFlash(tower) {
     const color = tower.info.color;
     const pos = tower.group.position;
-    emitParticles(pos.x, 2.2, pos.z, color, mobile ? 2 : 4, 0.4, 1.5, 0.12);
+    const orbY = tower.orbBaseY || 2.2;
+    emitParticles(pos.x, orbY, pos.z, color, mobile ? 2 : 5, 0.5, 1.8, 0.15);
+    if (!mobile) emitParticles(pos.x, orbY, pos.z, 0xffffff, 1, 0.2, 1.0, 0.08);
   }
 
-  /* Enemy leak flash at exit */
+  /* Enemy leak flash at exit — more dramatic warning */
   function spawnLeakVFX(x, y, z) {
-    emitParticles(x, y, z, 0xff2222, mobile ? 5 : 10, 1.2, 2.0, 0.4);
+    emitParticles(x, y, z, 0xff2222, mobile ? 5 : 12, 1.2, 2.0, 0.4);
+    emitParticles(x, y, z, 0xff8800, mobile ? 3 : 6, 0.8, 3.0, 0.3);
   }
 
   /* Damage flash on enemy body — brief emissive spike */
@@ -1404,13 +1470,60 @@ function init() {
 
     if (!state.gameOver && !(state.victory && !state.endless)) {
       torchLights.forEach((tl, i) => {
-        const base = i === 4 ? 120 : (i >= 5 ? 70 : 60);
-        tl.intensity = base + Math.sin(time*8+i*3)*10 + Math.sin(time*13+i)*8;
+        const base = i === 4 ? 140 : (i >= 5 ? 80 : 70);
+        tl.intensity = base + Math.sin(time*8+i*3)*18 + Math.sin(time*13+i)*12;
+        /* Color temperature shift — warmer/cooler flicker */
+        if (i < 4) {
+          const warmth = 0.5 + Math.sin(time * 6 + i * 2) * 0.2;
+          tl.color.setRGB(1.0, 0.5 + warmth * 0.2, 0.2 + warmth * 0.1);
+        }
       });
+
+      /* Animate visible flames */
+      torchFlames.forEach((tf, i) => {
+        const flicker = Math.sin(time * 12 + i * 4) * 0.03 + Math.sin(time * 18 + i * 7) * 0.02;
+        tf.flame.position.y = tf.baseY + flicker;
+        tf.flame.scale.set(1 + Math.sin(time * 10 + i) * 0.15, 1.1 + Math.sin(time * 14 + i) * 0.25, 1 + Math.sin(time * 10 + i) * 0.15);
+        tf.flame.material.opacity = 0.55 + Math.sin(time * 11 + i * 3) * 0.15;
+        tf.core.position.y = tf.baseY + 0.05 + flicker;
+        tf.core.scale.setScalar(0.8 + Math.sin(time * 16 + i) * 0.2);
+      });
+
+      /* Portal animations — rotate rings counter to each other, pulse glow */
       entryPortal.rotation.z = time * 0.5;
+      entryRing2.rotation.z = -time * 0.8;
+      entryDisc.material.opacity = 0.12 + Math.sin(time * 2.5) * 0.05;
       exitPortal.rotation.z = -time * 0.5;
-      entryLight.intensity = 80 + Math.sin(time*3)*25;
-      exitLight.intensity = 80 + Math.sin(time*3+1)*25;
+      exitRing2.rotation.z = time * 0.8;
+      exitDisc.material.opacity = 0.10 + Math.sin(time * 2.5 + 1) * 0.04;
+
+      entryLight.intensity = 140 + Math.sin(time*3)*40;
+      exitLight.intensity = 120 + Math.sin(time*3+1)*35;
+      entryGlow.intensity = 55 + Math.sin(time * 4) * 25;
+      exitGlow.intensity = 45 + Math.sin(time * 4 + 1) * 20;
+
+      /* Portal sprite breathing */
+      const entryPulse = 3.6 + Math.sin(time * 2) * 0.5;
+      entrySprite.scale.set(entryPulse, entryPulse, 1);
+      entrySprite.material.opacity = 0.5 + Math.sin(time * 2.5) * 0.15;
+      const exitPulse = 3.2 + Math.sin(time * 2 + 1) * 0.4;
+      exitSprite.scale.set(exitPulse, exitPulse, 1);
+      exitSprite.material.opacity = 0.4 + Math.sin(time * 2.5 + 1) * 0.12;
+
+      /* Rune path lights — slow ancient pulse */
+      runeLights.forEach((rl, i) => {
+        rl.intensity = 14 + Math.sin(time * 1.5 + i * 1.8) * 8;
+      });
+
+      /* Portal ambient particles — wisps rising from portals */
+      if (Math.random() < 0.25) {
+        emitParticles(entryPos.x + (Math.random() - 0.5) * 0.9, 0.3, entryPos.z + (Math.random() - 0.5) * 0.9,
+          0xff3311, mobile ? 1 : 2, 0.4, 1.2, 1.5);
+      }
+      if (Math.random() < 0.18) {
+        emitParticles(exitPos.x + (Math.random() - 0.5) * 0.9, 0.3, exitPos.z + (Math.random() - 0.5) * 0.9,
+          0x33ff55, mobile ? 1 : 2, 0.4, 1.0, 1.3);
+      }
 
       const dpos = dustGeo.attributes.position.array;
       for (let i = 0; i < dustCount; i++) {
@@ -1425,9 +1538,10 @@ function init() {
         const oby = t.orbBaseY || 2.2;
         t.orb.position.y = oby + Math.sin(time*2+t.col+t.row)*0.1;
         t.orb.rotation.y = time;
-        t.glow.material.opacity = 0.2 + Math.sin(time*3+t.col)*0.1;
+        t.glow.material.opacity = 0.3 + Math.sin(time*3+t.col)*0.15;
         t.glow.position.y = t.orb.position.y;
-        if (t.light) { t.light.intensity = 25 + Math.sin(time*4+t.row)*10; t.light.position.y = t.orb.position.y; }
+        t.glow.scale.set(1.3 + Math.sin(time*2.5+t.row)*0.2, 1.3 + Math.sin(time*2.5+t.row)*0.2, 1);
+        if (t.light) { t.light.intensity = 35 + Math.sin(time*4+t.row)*15; t.light.position.y = t.orb.position.y; }
       });
 
       if (state.waveActive) {
