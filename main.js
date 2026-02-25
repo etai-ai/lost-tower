@@ -22,17 +22,81 @@ const PATH_POINTS = [
 ];
 
 const WAVES = [
-  { enemies: 8,  hp: 50,  speed: 2.4, reward: 8,  delay: 0.9, name: "Forgotten Shades" },
-  { enemies: 10, hp: 65,  speed: 2.6, reward: 9,  delay: 0.8, name: "Temple Wraiths" },
-  { enemies: 12, hp: 80,  speed: 2.8, reward: 10, delay: 0.75, name: "Stone Golems" },
-  { enemies: 10, hp: 120, speed: 3.2, reward: 12, delay: 0.7, name: "Shadow Knights" },
-  { enemies: 14, hp: 100, speed: 3.0, reward: 11, delay: 0.55, name: "Cursed Swarm" },
-  { enemies: 12, hp: 160, speed: 3.4, reward: 14, delay: 0.65, name: "Ancient Warlords" },
-  { enemies: 16, hp: 150, speed: 3.6, reward: 13, delay: 0.45, name: "Spirit Horde" },
-  { enemies: 4,  hp: 700, speed: 1.8, reward: 50, delay: 1.8, name: "Temple Guardians" },
-  { enemies: 18, hp: 200, speed: 4.0, reward: 15, delay: 0.4, name: "Void Walkers" },
-  { enemies: 1,  hp: 2500, speed: 1.5, reward: 200, delay: 3.0, name: "The Sealed One" },
+  { enemies: 8,  hp: 50,  speed: 2.4, reward: 8,  delay: 0.9, name: "Forgotten Shades",  type: "shade" },
+  { enemies: 10, hp: 65,  speed: 2.6, reward: 9,  delay: 0.8, name: "Temple Wraiths",    type: "wraith" },
+  { enemies: 12, hp: 80,  speed: 2.8, reward: 10, delay: 0.75, name: "Stone Golems",     type: "golem" },
+  { enemies: 10, hp: 120, speed: 3.2, reward: 12, delay: 0.7, name: "Shadow Knights",    type: "knight" },
+  { enemies: 14, hp: 100, speed: 3.0, reward: 11, delay: 0.55, name: "Cursed Swarm",     type: "swarm" },
+  { enemies: 12, hp: 160, speed: 3.4, reward: 14, delay: 0.65, name: "Ancient Warlords", type: "warlord" },
+  { enemies: 16, hp: 150, speed: 3.6, reward: 13, delay: 0.45, name: "Spirit Horde",     type: "spirit" },
+  { enemies: 4,  hp: 700, speed: 1.8, reward: 50, delay: 1.8, name: "Temple Guardians",  type: "guardian" },
+  { enemies: 18, hp: 200, speed: 4.0, reward: 15, delay: 0.4, name: "Void Walkers",      type: "voidwalker" },
+  { enemies: 1,  hp: 2500, speed: 1.5, reward: 200, delay: 3.0, name: "The Sealed One",  type: "boss" },
 ];
+
+/* ─── ENEMY VISUAL DEFINITIONS ─── */
+const ENEMY_VISUALS = {
+  shade: {
+    bodyColor: 0x442244, emissive: 0x331133, emissiveIntensity: 0.6,
+    glowColor: 0x663366, eyeColor: 0xff44ff,
+    scale: 0.75, opacity: 0.6, hpBarColor: 0xcc66cc,
+    bobSpeed: 6, bobAmp: 0.08, spinSpeed: 0,
+  },
+  wraith: {
+    bodyColor: 0x8899bb, emissive: 0x556688, emissiveIntensity: 0.8,
+    glowColor: 0x8899cc, eyeColor: 0xaaccff,
+    scale: 0.8, opacity: 0.45, hpBarColor: 0x88aadd,
+    bobSpeed: 3, bobAmp: 0.12, spinSpeed: 0,
+  },
+  golem: {
+    bodyColor: 0x554433, emissive: 0x221100, emissiveIntensity: 0.2,
+    glowColor: 0x443322, eyeColor: 0xffaa33,
+    scale: 1.3, opacity: 0.95, hpBarColor: 0xbb8844,
+    bobSpeed: 2, bobAmp: 0.02, spinSpeed: 0,
+  },
+  knight: {
+    bodyColor: 0x331111, emissive: 0x440000, emissiveIntensity: 0.7,
+    glowColor: 0x661122, eyeColor: 0xff2222,
+    scale: 1.0, opacity: 0.85, hpBarColor: 0xff4444,
+    bobSpeed: 4, bobAmp: 0.04, spinSpeed: 1.5,
+  },
+  swarm: {
+    bodyColor: 0x557722, emissive: 0x334400, emissiveIntensity: 0.5,
+    glowColor: 0x669933, eyeColor: 0xccff44,
+    scale: 0.55, opacity: 0.8, hpBarColor: 0xaacc44,
+    bobSpeed: 10, bobAmp: 0.06, spinSpeed: 0,
+  },
+  warlord: {
+    bodyColor: 0x551122, emissive: 0x440011, emissiveIntensity: 0.6,
+    glowColor: 0x882233, eyeColor: 0xff6644,
+    scale: 1.25, opacity: 0.9, hpBarColor: 0xff6644,
+    bobSpeed: 3, bobAmp: 0.03, spinSpeed: 0.8,
+  },
+  spirit: {
+    bodyColor: 0x225566, emissive: 0x11aacc, emissiveIntensity: 1.2,
+    glowColor: 0x22ccee, eyeColor: 0x44ffff,
+    scale: 0.85, opacity: 0.7, hpBarColor: 0x44ddee,
+    bobSpeed: 5, bobAmp: 0.1, spinSpeed: 3.0,
+  },
+  guardian: {
+    bodyColor: 0xaa8833, emissive: 0xcc9922, emissiveIntensity: 1.5,
+    glowColor: 0xffcc44, eyeColor: 0xffee88,
+    scale: 1.8, opacity: 0.9, hpBarColor: 0xffcc44,
+    bobSpeed: 2, bobAmp: 0.05, spinSpeed: 1.0,
+  },
+  voidwalker: {
+    bodyColor: 0x110022, emissive: 0x220044, emissiveIntensity: 0.9,
+    glowColor: 0x440088, eyeColor: 0xcc44ff,
+    scale: 0.9, opacity: 0.75, hpBarColor: 0xaa44ff,
+    bobSpeed: 7, bobAmp: 0.07, spinSpeed: 2.0,
+  },
+  boss: {
+    bodyColor: 0x661111, emissive: 0xff4400, emissiveIntensity: 2.0,
+    glowColor: 0xff6622, eyeColor: 0xffdd44,
+    scale: 2.2, opacity: 0.95, hpBarColor: 0xff8844,
+    bobSpeed: 1.5, bobAmp: 0.04, spinSpeed: 0.5,
+  },
+};
 
 function gridToWorld(col, row) {
   return new THREE.Vector3(col * TILE - W / 2 + TILE / 2, 0, row * TILE - H / 2 + TILE / 2);
@@ -47,6 +111,18 @@ function isPathTile(col, row) {
     else { const a = Math.min(c1, c2), b = Math.max(c1, c2); if (row === r1 && col >= a && col <= b) return true; }
   }
   return false;
+}
+
+/* ─── GLOW TEXTURE ─── */
+function glowTex() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 64;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.4, "rgba(255,255,255,0.4)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); return t;
 }
 
 /* ─── TEXTURE GENERATORS ─── */
@@ -94,13 +170,14 @@ const mobile = isMobile();
 /* ─── UI STATE ─── */
 let speed = 1;
 let autoWave = true;
+let paused = false;
 let toastTimer = null;
 let state = null;
 
 /* ─── DOM HELPERS ─── */
 const $ = (id) => document.getElementById(id);
 
-function showToast(text, ms = 1800) {
+function showToast(text, ms = 2800) {
   const el = $("toast");
   el.textContent = text;
   el.style.display = "";
@@ -123,45 +200,41 @@ function updateLives() {
 }
 
 function updateWaveUI() {
-  const waveBtn = $("wave-btn");
-  const waveStatus = $("wave-status");
-  const waveName = $("wave-name");
-  const enemiesLeftEl = $("enemies-left");
+  const el = $("wave-info");
   const hudCenter = $("hud-center");
 
   if (state.gameOver || state.victory) {
     hudCenter.style.display = "none";
-    waveName.style.display = "none";
     return;
   }
   hudCenter.style.display = "";
 
-  if (!state.waveActive && state.wave < WAVES.length) {
-    waveBtn.style.display = "";
-    waveStatus.style.display = "none";
-    waveBtn.textContent = state.wave === 0 ? "\u25B6 Wave 1" : "\u25B6 Wave " + (state.wave + 1);
+  if (state.waveActive) {
+    const cur = WAVES[state.wave - 1];
+    el.textContent = "Wave " + state.wave + " \u2014 " + cur.name;
+    el.style.cursor = "default";
+    el.style.opacity = "0.8";
+  } else if (state.wave < WAVES.length) {
+    el.textContent = "\u25B6 Wave " + (state.wave + 1);
+    el.style.cursor = "pointer";
+    el.style.opacity = "1";
   } else {
-    waveBtn.style.display = "none";
-    waveStatus.style.display = "";
-    $("wave-num").textContent = "Wave " + state.wave + "/" + WAVES.length;
-    if (state.waveActive && state.wave > 0) {
-      enemiesLeftEl.style.display = "";
-    } else {
-      enemiesLeftEl.style.display = "none";
-    }
-  }
-
-  const currentWave = state.wave > 0 ? WAVES[state.wave - 1] : null;
-  if (currentWave && state.waveActive) {
-    waveName.style.display = "";
-    waveName.textContent = currentWave.name;
-  } else {
-    waveName.style.display = "none";
+    el.textContent = "All waves complete";
+    el.style.cursor = "default";
+    el.style.opacity = "0.8";
   }
 }
 
 function updateEnemiesLeft(count) {
-  $("enemies-left").textContent = Math.max(0, count) + " left";
+  /* no-op — removed from HUD */
+}
+
+function updatePauseBtn() {
+  const btn = $("pause-btn");
+  btn.textContent = paused ? "\u25B6" : "\u23F8";
+  btn.style.background = paused ? "rgba(255,100,100,0.25)" : "rgba(138,126,96,0.1)";
+  btn.style.borderColor = paused ? "rgba(255,100,100,0.5)" : "rgba(138,126,96,0.25)";
+  btn.style.color = paused ? "#ff8866" : "#8a7e60";
 }
 
 function updateAutoBtn() {
@@ -210,6 +283,7 @@ function startWave() {
   if (!state || state.waveActive || state.gameOver || state.victory) return;
   if (state.wave >= WAVES.length) return;
   state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
+  const w = WAVES[state.wave - 1];
   updateWaveUI();
 }
 
@@ -223,18 +297,18 @@ function buildTowerBar() {
     const colorHex = "#" + info.color.toString(16).padStart(6, "0");
 
     if (mobile) {
-      btn.style.cssText = "width:68px;padding:8px 4px;cursor:pointer;background:rgba(10,9,8,0.85);border:1px solid rgba(138,126,96,0.3);border-radius:10px;color:#d4c8a0;font-family:'Georgia',serif;text-align:center;transition:all 0.15s;-webkit-tap-highlight-color:transparent;";
+      btn.style.cssText = "width:70px;padding:8px 4px;cursor:pointer;background:rgba(10,9,8,0.92);border:1px solid rgba(138,126,96,0.3);border-radius:6px;color:#d4c8a0;font-family:'Georgia',serif;text-align:center;transition:all 0.15s;-webkit-tap-highlight-color:transparent;pointer-events:auto;";
       btn.innerHTML =
-        '<div style="font-size:22px;line-height:1">' + info.icon + '</div>' +
-        '<div style="font-size:10px;margin-top:3px;color:' + colorHex + ';font-weight:bold">' + info.name + '</div>' +
-        '<div style="font-size:11px;color:#ffcc44;margin-top:2px;font-weight:bold">' + info.cost + 'g</div>';
+        '<div style="font-size:26px;line-height:1">' + info.icon + '</div>' +
+        '<div style="font-size:12px;margin-top:4px;color:' + colorHex + ';font-weight:bold">' + info.name + '</div>' +
+        '<div style="font-size:13px;color:#ffcc44;margin-top:3px;font-weight:bold">' + info.cost + 'g</div>';
     } else {
-      btn.style.cssText = "padding:8px 14px;cursor:pointer;background:rgba(10,9,8,0.85);border:1px solid rgba(138,126,96,0.3);border-radius:6px;color:#d4c8a0;font-family:'Georgia',serif;transition:all 0.2s;min-width:110px;text-align:center;";
+      btn.style.cssText = "padding:8px 14px;cursor:pointer;background:rgba(10,9,8,0.92);border:1px solid rgba(138,126,96,0.3);border-radius:6px;color:#d4c8a0;font-family:'Georgia',serif;transition:all 0.2s;min-width:100px;text-align:center;pointer-events:auto;";
       btn.innerHTML =
-        '<div style="font-size:18px;line-height:1">' + info.icon + '</div>' +
-        '<div style="font-size:13px;color:' + colorHex + ';font-weight:bold;margin-top:4px">' + info.name + '</div>' +
-        '<div style="font-size:10px;opacity:0.5;margin-top:2px">' + info.desc + '</div>' +
-        '<div style="font-size:12px;color:#ffcc44;margin-top:4px">' + info.cost + 'g</div>';
+        '<div style="font-size:20px;line-height:1">' + info.icon + '</div>' +
+        '<div style="font-size:13px;color:' + colorHex + ';font-weight:bold;margin-top:3px">' + info.name + '</div>' +
+        '<div style="font-size:9px;opacity:0.5;margin-top:1px">' + info.desc + '</div>' +
+        '<div style="font-size:12px;color:#ffcc44;margin-top:3px">' + info.cost + 'g</div>';
     }
 
     btn.addEventListener("click", () => selectTower(key));
@@ -255,7 +329,7 @@ function init() {
 
   const camera = new THREE.PerspectiveCamera(55, el.clientWidth / el.clientHeight, 0.1, 200);
   camera.position.set(0, 24, 18);
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(0, 0, 3);
 
   THREE.ColorManagement.enabled = false;
   const renderer = new THREE.WebGLRenderer({ antialias: !mobile, alpha: false });
@@ -269,6 +343,7 @@ function init() {
   el.appendChild(renderer.domElement);
 
   /* Materials */
+  const glowMap = glowTex();
   const flTex = floorTex(); flTex.repeat.set(4, 3);
   const pTex = pathTex();
   const floorMat = new THREE.MeshStandardMaterial({ map: flTex, roughness: 0.8, metalness: 0.05 });
@@ -361,6 +436,88 @@ function init() {
   /* Select the default tower visually */
   selectTower("fire");
   updateGold();
+  updateWaveUI();
+
+  /* Auto-start wave 1 if auto mode is on */
+  if (autoWave) {
+    setTimeout(() => { if (!state.gameOver && !state.victory) startWave(); }, 1500);
+  }
+
+  /* ─── PRE-BUILT GEOMETRIES & MATERIALS ─── */
+  const towerGeo = {
+    base: new THREE.CylinderGeometry(0.35, 0.5, 0.3, 8),
+    fire: new THREE.CylinderGeometry(0.12, 0.25, 1.6, 6),
+    ice: new THREE.CylinderGeometry(0.18, 0.18, 1.8, 4),
+    earth: new THREE.BoxGeometry(0.5, 1.8, 0.5),
+    arcane: new THREE.CylinderGeometry(0.08, 0.3, 2.0, 3),
+    orb: new THREE.SphereGeometry(0.15, 12, 12),
+  };
+  const towerMat = {};
+  const towerGlowMat = {};
+  const towerOrbMat = {};
+  Object.entries(TOWER_TYPES).forEach(([key, info]) => {
+    towerMat[key] = new THREE.MeshStandardMaterial({ color: info.color, emissive: info.emissive, emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.6 });
+    if (key === "ice") { towerMat[key].transparent = true; towerMat[key].opacity = 0.85; }
+    towerOrbMat[key] = new THREE.MeshStandardMaterial({ color: info.color, emissive: info.emissive, emissiveIntensity: 2.0, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.9 });
+    towerGlowMat[key] = new THREE.SpriteMaterial({ map: glowMap, color: info.color, transparent: true, opacity: 0.3 });
+  });
+
+  /* ─── ENEMY GEOMETRIES PER TYPE ─── */
+  const enemyGeoByType = {
+    shade:      new THREE.SphereGeometry(0.3, 10, 10),
+    wraith:     new THREE.CylinderGeometry(0.12, 0.18, 0.6, 8),
+    golem:      new THREE.BoxGeometry(0.45, 0.45, 0.45),
+    knight:     new THREE.SphereGeometry(0.3, 10, 10),
+    swarm:      new THREE.SphereGeometry(0.3, 8, 8),
+    warlord:    new THREE.SphereGeometry(0.3, 10, 10),
+    spirit:     new THREE.DodecahedronGeometry(0.3, 0),
+    guardian:   new THREE.OctahedronGeometry(0.3, 0),
+    voidwalker: new THREE.IcosahedronGeometry(0.3, 0),
+    boss:       new THREE.SphereGeometry(0.3, 16, 16),
+  };
+  /* Shared small geometries */
+  const enemyEyeGeo = new THREE.SphereGeometry(0.05, 6, 6);
+  const enemyHpBgGeo = new THREE.PlaneGeometry(0.7, 0.08);
+  const enemyHpFillGeo = new THREE.PlaneGeometry(0.68, 0.06);
+  const enemyHpBgMat = new THREE.MeshBasicMaterial({ color: 0x220000, transparent: true, opacity: 0.7 });
+
+  /* Knight spike geometry */
+  const spikeGeo = new THREE.ConeGeometry(0.04, 0.18, 4);
+
+  /* Guardian / Boss ring geometry */
+  const orbitRingGeo = new THREE.TorusGeometry(0.35, 0.02, 6, 24);
+
+  /* Pre-build materials per enemy type */
+  const enemyMats = {};
+  Object.entries(ENEMY_VISUALS).forEach(([type, v]) => {
+    enemyMats[type] = {
+      body: new THREE.MeshStandardMaterial({
+        color: v.bodyColor, emissive: v.emissive, emissiveIntensity: v.emissiveIntensity,
+        roughness: 0.4, metalness: 0.6, transparent: true, opacity: v.opacity,
+      }),
+      eye: new THREE.MeshStandardMaterial({
+        color: v.eyeColor, emissive: v.eyeColor, emissiveIntensity: 2.0,
+      }),
+      glow: new THREE.SpriteMaterial({
+        map: glowMap, color: v.glowColor, transparent: true, opacity: 0.25,
+      }),
+    };
+  });
+
+  /* ─── TOWER LIGHT POOL ─── */
+  /* Pre-allocate all possible tower lights so the light count never changes at runtime */
+  const MAX_TOWER_LIGHTS = 50;
+  const towerLightPool = [];
+  for (let i = 0; i < MAX_TOWER_LIGHTS; i++) {
+    const pl = new THREE.PointLight(0xffffff, 0, 10);
+    pl.position.set(0, -100, 0);
+    scene.add(pl);
+    towerLightPool.push(pl);
+  }
+  let nextLight = 0;
+
+  /* Force shader compilation with all lights present */
+  renderer.render(scene, camera);
 
   /* ─── TOWER CREATION ─── */
   function createTower(col, row, type) {
@@ -369,26 +526,27 @@ function init() {
     const group = new THREE.Group();
     group.position.set(pos.x, 0, pos.z);
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.3, 8), darkStoneMat);
+    const base = new THREE.Mesh(towerGeo.base, darkStoneMat);
     base.position.y = 0.15; base.castShadow = !mobile; group.add(base);
 
-    let body;
-    const bodyMat = new THREE.MeshStandardMaterial({ color: info.color, emissive: info.emissive, emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.6 });
-    if (type === "fire") body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 1.6, 6), bodyMat);
-    else if (type === "ice") { body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.8, 4), bodyMat.clone()); body.material.transparent = true; body.material.opacity = 0.85; body.rotation.y = Math.PI/4; }
-    else if (type === "earth") body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), bodyMat.clone());
-    else body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.3, 2.0, 3), bodyMat.clone());
+    const body = new THREE.Mesh(towerGeo[type], towerMat[type]);
+    if (type === "ice") body.rotation.y = Math.PI/4;
     body.position.y = 1.1; body.castShadow = !mobile; group.add(body);
 
-    const orbMat = new THREE.MeshStandardMaterial({ color: info.color, emissive: info.emissive, emissiveIntensity: 2.0, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.9 });
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), orbMat);
+    const orb = new THREE.Mesh(towerGeo.orb, towerOrbMat[type]);
     orb.position.y = 2.2; group.add(orb);
 
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: info.color, transparent: true, opacity: 0.3 }));
+    const glow = new THREE.Sprite(towerGlowMat[type]);
     glow.scale.set(1.0, 1.0, 1); glow.position.y = 2.2; group.add(glow);
 
-    const light = new THREE.PointLight(info.color, 30, 10);
-    light.position.y = 2.2; group.add(light);
+    /* Grab a pre-allocated light from the pool */
+    let light = null;
+    if (nextLight < towerLightPool.length) {
+      light = towerLightPool[nextLight++];
+      light.color.setHex(info.color);
+      light.intensity = 30;
+      light.position.set(pos.x, 2.2, pos.z);
+    }
     scene.add(group);
 
     const tower = { group, orb, glow, light, col, row, type, info, cooldown: 0 };
@@ -398,40 +556,132 @@ function init() {
   }
 
   /* ─── ENEMY CREATION ─── */
-  function spawnEnemy(hp, spd, reward) {
+  function spawnEnemy(hp, spd, reward, type) {
+    const vis = ENEMY_VISUALS[type] || ENEMY_VISUALS.shade;
+    const mats = enemyMats[type] || enemyMats.shade;
+    const s = vis.scale;
+
     const group = new THREE.Group();
     const startPos = gridToWorld(PATH_POINTS[0][0], PATH_POINTS[0][1]);
-    group.position.copy(startPos); group.position.y = 0.4;
+    group.position.copy(startPos);
+    group.position.y = 0.15 + 0.25 * s;
 
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x442233, emissive: 0x331122, emissiveIntensity: 0.5, roughness: 0.4, metalness: 0.6, transparent: true, opacity: 0.85 });
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10), bodyMat);
-    body.castShadow = !mobile; group.add(body);
+    /* Body */
+    const body = new THREE.Mesh(enemyGeoByType[type] || enemyGeoByType.shade, mats.body.clone());
+    body.scale.setScalar(s);
+    body.castShadow = !mobile;
+    group.add(body);
 
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff2244, emissive: 0xff1133, emissiveIntensity: 2.0 });
-    const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat);
-    eye1.position.set(-0.1, 0.1, -0.25); group.add(eye1);
-    const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat);
-    eye2.position.set(0.1, 0.1, -0.25); group.add(eye2);
+    /* Eyes — positioned relative to scale */
+    const eyeScale = Math.min(s, 1.2);
+    const eye1 = new THREE.Mesh(enemyEyeGeo, mats.eye);
+    eye1.position.set(-0.1 * s, 0.08 * s, -0.25 * s);
+    eye1.scale.setScalar(eyeScale);
+    group.add(eye1);
+    const eye2 = new THREE.Mesh(enemyEyeGeo, mats.eye);
+    eye2.position.set(0.1 * s, 0.08 * s, -0.25 * s);
+    eye2.scale.setScalar(eyeScale);
+    group.add(eye2);
 
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x662244, transparent: true, opacity: 0.25 }));
-    glow.scale.set(1.2, 1.2, 1); group.add(glow);
+    /* Type-specific decorations */
+    const extras = [];
 
-    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.08), new THREE.MeshBasicMaterial({ color: 0x220000, transparent: true, opacity: 0.7 }));
-    hpBg.position.y = 0.65; hpBg.rotation.x = -0.3; group.add(hpBg);
-    const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.06), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
-    hpFill.position.y = 0.65; hpFill.position.z = 0.001; hpFill.rotation.x = -0.3; group.add(hpFill);
+    if (type === "knight") {
+      /* Crown of spikes */
+      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x880000, emissive: 0x440000, emissiveIntensity: 0.8, metalness: 0.8 });
+      for (let i = 0; i < 5; i++) {
+        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        const angle = (i / 5) * Math.PI * 2;
+        spike.position.set(Math.cos(angle) * 0.22, 0.28, Math.sin(angle) * 0.22);
+        spike.rotation.z = -Math.cos(angle) * 0.4;
+        spike.rotation.x = Math.sin(angle) * 0.4;
+        extras.push(spike);
+        group.add(spike);
+      }
+    }
+
+    if (type === "warlord") {
+      /* Horns */
+      const hornMat = new THREE.MeshStandardMaterial({ color: 0x442200, emissive: 0x221100, emissiveIntensity: 0.3, metalness: 0.7 });
+      const hornGeo = new THREE.ConeGeometry(0.05, 0.3, 5);
+      const horn1 = new THREE.Mesh(hornGeo, hornMat);
+      horn1.position.set(-0.2 * s, 0.25 * s, -0.05 * s);
+      horn1.rotation.z = 0.4;
+      group.add(horn1); extras.push(horn1);
+      const horn2 = new THREE.Mesh(hornGeo, hornMat);
+      horn2.position.set(0.2 * s, 0.25 * s, -0.05 * s);
+      horn2.rotation.z = -0.4;
+      group.add(horn2); extras.push(horn2);
+    }
+
+    if (type === "guardian") {
+      /* Orbiting ring */
+      const ringMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xddaa22, emissiveIntensity: 1.5, metalness: 0.9, transparent: true, opacity: 0.6 });
+      const ring = new THREE.Mesh(orbitRingGeo, ringMat);
+      ring.scale.setScalar(s);
+      group.add(ring);
+      extras.push(ring);
+    }
+
+    if (type === "boss") {
+      /* Multiple orbiting rings */
+      const ringMat1 = new THREE.MeshStandardMaterial({ color: 0xff4422, emissive: 0xff2200, emissiveIntensity: 2.0, metalness: 0.9, transparent: true, opacity: 0.5 });
+      const ringMat2 = new THREE.MeshStandardMaterial({ color: 0xffcc22, emissive: 0xddaa00, emissiveIntensity: 1.5, metalness: 0.9, transparent: true, opacity: 0.5 });
+      const ring1 = new THREE.Mesh(orbitRingGeo, ringMat1);
+      ring1.scale.setScalar(s * 0.9);
+      group.add(ring1); extras.push(ring1);
+      const ring2 = new THREE.Mesh(orbitRingGeo, ringMat2);
+      ring2.scale.setScalar(s * 1.1);
+      ring2.rotation.x = Math.PI / 2;
+      group.add(ring2); extras.push(ring2);
+      /* Inner core glow */
+      const coreMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff6600, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 });
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), coreMat);
+      core.scale.setScalar(s);
+      group.add(core); extras.push(core);
+    }
+
+    /* Glow sprite */
+    const glow = new THREE.Sprite(mats.glow.clone());
+    glow.scale.set(1.0 * s, 1.0 * s, 1);
+    group.add(glow);
+
+    /* HP bar — scaled up for large enemies */
+    const hpScale = Math.max(1, s * 0.8);
+    const hpBg = new THREE.Mesh(enemyHpBgGeo, enemyHpBgMat);
+    hpBg.position.y = 0.35 * s + 0.35;
+    hpBg.scale.x = hpScale;
+    hpBg.rotation.x = -0.3;
+    group.add(hpBg);
+    const hpFill = new THREE.Mesh(enemyHpFillGeo, new THREE.MeshBasicMaterial({ color: vis.hpBarColor }));
+    hpFill.position.y = 0.35 * s + 0.35;
+    hpFill.position.z = 0.001;
+    hpFill.scale.x = hpScale;
+    hpFill.rotation.x = -0.3;
+    group.add(hpFill);
 
     scene.add(group);
-    const enemy = { group, body, hpFill, glow, hp, maxHp: hp, speed: spd, reward, pathIndex: 0, pathProgress: 0, slowTimer: 0, alive: true };
+
+    const enemy = {
+      group, body, hpFill, glow, extras,
+      hp, maxHp: hp, speed: spd, reward,
+      pathIndex: 0, pathProgress: 0, slowTimer: 0, alive: true,
+      type, vis, hpScale,
+    };
     state.enemies.push(enemy);
     state.enemiesAlive++;
     return enemy;
   }
 
   /* ─── PROJECTILE ─── */
+  const projGeo = new THREE.SphereGeometry(0.08, 6, 6);
+  const projMat = {};
+  Object.entries(TOWER_TYPES).forEach(([key, info]) => {
+    projMat[key] = new THREE.MeshStandardMaterial({ color: info.color, emissive: info.emissive, emissiveIntensity: 3, transparent: true, opacity: 0.9 });
+  });
+
   function fireProjectile(tower, target) {
-    const mat = new THREE.MeshStandardMaterial({ color: tower.info.color, emissive: tower.info.emissive, emissiveIntensity: 3, transparent: true, opacity: 0.9 });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), mat);
+    const mesh = new THREE.Mesh(projGeo, projMat[tower.type]);
     mesh.position.copy(tower.group.position); mesh.position.y = 2.2;
     scene.add(mesh);
     state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.info.damage, type: tower.type });
@@ -606,13 +856,13 @@ function init() {
 
   function animate() {
     const rawDt = Math.min(clock.getDelta(), 0.05);
-    const dt = rawDt * speed;
-    time += rawDt;
+    const dt = paused ? 0 : rawDt * speed;
+    time += paused ? 0 : rawDt;
 
     camera.position.x = Math.sin(camAngle) * camDist * 0.5;
     camera.position.z = Math.cos(camAngle) * camDist * 0.5 + 4;
     camera.position.y = camHeight;
-    camera.lookAt(0, 0, 0);
+    camera.lookAt(0, 0, 3);
 
     if (!state.gameOver && !state.victory) {
       torchLights.forEach((tl, i) => {
@@ -637,7 +887,7 @@ function init() {
         t.orb.position.y = 2.2 + Math.sin(time*2+t.col+t.row)*0.1;
         t.orb.rotation.y = time;
         t.glow.material.opacity = 0.2 + Math.sin(time*3+t.col)*0.1;
-        t.light.intensity = 25 + Math.sin(time*4+t.row)*10;
+        if (t.light) t.light.intensity = 25 + Math.sin(time*4+t.row)*10;
       });
 
       if (state.waveActive) {
@@ -645,7 +895,7 @@ function init() {
         if (waveInfo && state.spawned < waveInfo.enemies) {
           state.spawnTimer -= dt;
           if (state.spawnTimer <= 0) {
-            spawnEnemy(waveInfo.hp, waveInfo.speed, waveInfo.reward);
+            spawnEnemy(waveInfo.hp, waveInfo.speed, waveInfo.reward, waveInfo.type);
             state.spawned++; state.spawnTimer = waveInfo.delay;
             updateEnemiesLeft(waveInfo.enemies - state.spawned + state.enemiesAlive);
           }
@@ -653,12 +903,15 @@ function init() {
         if (state.spawned >= (waveInfo?.enemies || 0) && state.enemiesAlive <= 0) {
           state.waveActive = false; updateWaveUI();
           if (state.wave >= WAVES.length) { state.victory = true; showVictory(); }
-          else if (autoWave) {
-            setTimeout(() => {
-              if (state.gameOver || state.victory) return;
-              state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
-              updateWaveUI();
-            }, 1500);
+          else {
+            const next = WAVES[state.wave];
+            showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
+            if (autoWave) {
+              setTimeout(() => {
+                if (state.gameOver || state.victory) return;
+                startWave();
+              }, 2000);
+            }
           }
         }
         updateEnemiesLeft((waveInfo ? waveInfo.enemies - state.spawned : 0) + state.enemiesAlive);
@@ -667,9 +920,77 @@ function init() {
       state.enemies.forEach(e => moveEnemy(e, dt));
       state.enemies.forEach(e => {
         if (!e.alive) return;
-        e.body.position.y = Math.sin(time*4+e.pathProgress*10)*0.05;
-        e.glow.material.opacity = 0.2 + Math.sin(time*3)*0.08;
-        e.body.material.emissive.setHex(e.slowTimer > 0 ? 0x2244aa : 0x331122);
+        const v = e.vis;
+
+        /* Per-type body animation */
+        e.body.position.y = Math.sin(time * v.bobSpeed + e.pathProgress * 10) * v.bobAmp;
+        if (v.spinSpeed > 0) {
+          e.body.rotation.y = time * v.spinSpeed;
+        }
+
+        /* Glow pulse */
+        e.glow.material.opacity = 0.18 + Math.sin(time * 3 + e.pathProgress * 5) * 0.1;
+
+        /* Slow visual override */
+        if (e.slowTimer > 0) {
+          e.body.material.emissive.setHex(0x2244aa);
+        } else {
+          e.body.material.emissive.setHex(v.emissive);
+        }
+
+        /* Shade: flicker opacity */
+        if (e.type === "shade") {
+          e.body.material.opacity = 0.4 + Math.sin(time * 8 + e.pathProgress * 20) * 0.2;
+        }
+
+        /* Wraith: ghostly vertical float */
+        if (e.type === "wraith") {
+          e.group.position.y = 0.3 + Math.sin(time * 3 + e.pathProgress * 8) * 0.15;
+        }
+
+        /* Swarm: jitter */
+        if (e.type === "swarm") {
+          e.body.position.x = Math.sin(time * 15 + e.pathProgress * 30) * 0.03;
+          e.body.position.z = Math.cos(time * 12 + e.pathProgress * 25) * 0.03;
+        }
+
+        /* Guardian: ring orbit */
+        if (e.type === "guardian" && e.extras.length > 0) {
+          e.extras[0].rotation.x = time * 1.2;
+          e.extras[0].rotation.z = time * 0.8;
+        }
+
+        /* Boss: ring orbits + core pulse */
+        if (e.type === "boss" && e.extras.length >= 3) {
+          e.extras[0].rotation.x = time * 0.7;
+          e.extras[0].rotation.z = time * 1.1;
+          e.extras[1].rotation.y = time * 0.9;
+          e.extras[1].rotation.z = time * 0.6;
+          const pulse = 0.4 + Math.sin(time * 4) * 0.2;
+          e.extras[2].material.opacity = pulse;
+          e.extras[2].material.emissiveIntensity = 2.0 + Math.sin(time * 6) * 1.0;
+        }
+
+        /* Knight: spike crown rotation */
+        if (e.type === "knight" && e.extras.length > 0) {
+          e.extras.forEach((spike, i) => {
+            const angle = (i / 5) * Math.PI * 2 + time * 2;
+            spike.position.set(Math.cos(angle) * 0.22, 0.28, Math.sin(angle) * 0.22);
+          });
+        }
+
+        /* Spirit: faster spin + scale pulse */
+        if (e.type === "spirit") {
+          const pulse = 1.0 + Math.sin(time * 5) * 0.08;
+          e.body.scale.setScalar(v.scale * pulse);
+        }
+
+        /* Voidwalker: scale flicker */
+        if (e.type === "voidwalker") {
+          const flicker = 1.0 + Math.sin(time * 10 + e.pathProgress * 15) * 0.05;
+          e.body.scale.setScalar(v.scale * flicker);
+          e.body.material.opacity = 0.6 + Math.sin(time * 7) * 0.15;
+        }
       });
 
       state.towers.forEach(t => {
@@ -696,8 +1017,9 @@ function init() {
             state.enemies.forEach(e => { if (!e.alive || e === p.target || cc >= 2) return; if (e.group.position.distanceTo(hitPos) < 2.5) { e.hp -= p.damage * 0.5; cc++; } });
           }
           const ratio = Math.max(0, p.target.hp / p.target.maxHp);
-          p.target.hpFill.scale.x = ratio;
-          p.target.hpFill.position.x = -0.34 * (1 - ratio);
+          const hs = p.target.hpScale || 1;
+          p.target.hpFill.scale.x = ratio * hs;
+          p.target.hpFill.position.x = -0.34 * hs * (1 - ratio);
           if (ratio < 0.4) p.target.hpFill.material.color.setHex(0xff8800);
           if (ratio < 0.2) p.target.hpFill.material.color.setHex(0xff0000);
           if (p.target.hp <= 0) {
@@ -729,10 +1051,12 @@ if (mobile) document.body.classList.add("mobile");
 buildTowerBar();
 updateAutoBtn();
 updateSpeedBtn();
+updatePauseBtn();
 
 $("start-btn").addEventListener("click", init);
-$("wave-btn").addEventListener("click", startWave);
+$("wave-info").addEventListener("click", startWave);
 $("auto-btn").addEventListener("click", () => { autoWave = !autoWave; updateAutoBtn(); });
 $("speed-btn").addEventListener("click", () => { speed = speed >= 3 ? 1 : speed + 1; updateSpeedBtn(); });
+$("pause-btn").addEventListener("click", () => { paused = !paused; updatePauseBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
 $("replay-btn").addEventListener("click", () => window.location.reload());

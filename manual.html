@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Lost Tower — Manual</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0908; color: #d4c8a0; font-family: 'Georgia', serif;
+      max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7;
+    }
+    h1 { font-size: 32px; font-weight: 300; letter-spacing: 4px; text-align: center; margin-bottom: 8px; text-shadow: 0 0 30px rgba(255,160,60,0.3); }
+    .subtitle { text-align: center; color: #8a7e60; font-size: 13px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 40px; }
+    h2 { font-size: 20px; color: #ffcc44; margin: 36px 0 14px; letter-spacing: 2px; border-bottom: 1px solid rgba(138,126,96,0.3); padding-bottom: 6px; }
+    h3 { font-size: 16px; color: #d4c8a0; margin: 20px 0 8px; }
+    p { margin: 8px 0; color: #b0a888; }
+    strong { color: #d4c8a0; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+    th { text-align: left; color: #ffcc44; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid rgba(138,126,96,0.4); }
+    td { padding: 8px 10px; border-bottom: 1px solid rgba(138,126,96,0.12); color: #b0a888; font-size: 14px; }
+    tr:hover td { background: rgba(138,126,96,0.08); }
+    .icon { font-size: 20px; }
+    .tower-color { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .tip { background: rgba(138,126,96,0.12); border-left: 3px solid #8a7e60; padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
+    .tip strong { color: #ffcc44; }
+    .boss td { color: #ff8866; font-weight: bold; }
+    a { color: #ffcc44; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 24px; color: #8a7e60; font-size: 13px; }
+    .dps { color: #8a7e60; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <a class="back" href="index.html">&larr; Back to game</a>
+  <h1>THE LOST TOWER</h1>
+  <div class="subtitle">Game Manual</div>
+
+  <h2>Overview</h2>
+  <p>Ancient spirits flood through a rift in the temple floor. Build elemental obelisks along the path to destroy them before they escape. Survive all 10 waves to seal the breach.</p>
+  <p>You start with <strong>150 gold</strong> and <strong>20 lives</strong>. Each enemy that reaches the exit costs 1 life. Reach 0 lives and the temple is lost.</p>
+
+  <h2>Controls</h2>
+  <h3>Desktop</h3>
+  <p><strong>Left-click</strong> &mdash; Place the selected tower on an empty tile</p>
+  <p><strong>Right-drag</strong> &mdash; Rotate the camera</p>
+  <p><strong>Scroll wheel</strong> &mdash; Zoom in/out</p>
+  <h3>Mobile</h3>
+  <p><strong>Tap</strong> &mdash; Place tower</p>
+  <p><strong>Drag</strong> &mdash; Rotate camera</p>
+  <p><strong>Pinch</strong> &mdash; Zoom in/out</p>
+
+  <h2>HUD</h2>
+  <p><strong style="color:#ffcc44">&diamondsuit; Gold</strong> &mdash; Earned by killing enemies. Spent to build towers.</p>
+  <p><strong style="color:#ff8866">&hearts; Lives</strong> &mdash; Lost when an enemy reaches the exit.</p>
+  <p><strong>Wave button</strong> &mdash; Start the next wave. Shows wave number and enemy name.</p>
+  <p><strong>AUTO / MANUAL</strong> &mdash; Toggle auto-start for the next wave (1.5s delay between waves).</p>
+  <p><strong>Speed (1x / 2x / 3x)</strong> &mdash; Cycle game speed.</p>
+
+  <h2>Towers</h2>
+  <p>Towers can be placed on any tile that is not part of the path. Each tower fires at the closest enemy within range.</p>
+
+  <table>
+    <tr>
+      <th></th>
+      <th>Tower</th>
+      <th>Cost</th>
+      <th>Damage</th>
+      <th>Rate</th>
+      <th>DPS</th>
+      <th>Range</th>
+      <th>Special</th>
+    </tr>
+    <tr>
+      <td class="icon">&#x1F525;</td>
+      <td><span class="tower-color" style="background:#ff6644"></span><strong>Fire</strong></td>
+      <td>30g</td>
+      <td>12</td>
+      <td>0.9s</td>
+      <td class="dps">13.3</td>
+      <td>3.5</td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="icon">&#x2744;&#xFE0F;</td>
+      <td><span class="tower-color" style="background:#44aaff"></span><strong>Frost</strong></td>
+      <td>40g</td>
+      <td>8</td>
+      <td>1.2s</td>
+      <td class="dps">6.7</td>
+      <td>4.0</td>
+      <td>Slows target 40% for 2s</td>
+    </tr>
+    <tr>
+      <td class="icon">&#x1FAA8;</td>
+      <td><span class="tower-color" style="background:#66ff88"></span><strong>Earth</strong></td>
+      <td>50g</td>
+      <td>25</td>
+      <td>1.8s</td>
+      <td class="dps">13.9</td>
+      <td>3.0</td>
+      <td>&mdash;</td>
+    </tr>
+    <tr>
+      <td class="icon">&#x2728;</td>
+      <td><span class="tower-color" style="background:#ffcc44"></span><strong>Arcane</strong></td>
+      <td>70g</td>
+      <td>18</td>
+      <td>1.0s</td>
+      <td class="dps">18.0</td>
+      <td>5.0</td>
+      <td>Chains to 2 nearby enemies for 50% dmg (2.5 range)</td>
+    </tr>
+  </table>
+
+  <div class="tip"><strong>Tip:</strong> Fire towers are the best early-game value. Frost towers don't deal much damage but the 40% slow is crucial for boss waves. Arcane towers shine against clustered groups.</div>
+
+  <h2>Waves</h2>
+  <p>There are 10 waves of increasing difficulty. Each wave features a distinct enemy type with unique appearance and behavior. Wave 8 is a mini-boss wave and Wave 10 is the final boss.</p>
+
+  <table>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>Appearance</th>
+      <th>Count</th>
+      <th>HP</th>
+      <th>Speed</th>
+      <th>Reward</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td><span style="color:#663366">Forgotten Shades</span></td>
+      <td>Small translucent purple spheres that flicker in and out</td>
+      <td>8</td>
+      <td>50</td>
+      <td>2.4</td>
+      <td>8g</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span style="color:#8899cc">Temple Wraiths</span></td>
+      <td>Tall pale blue pillars that float and drift upward</td>
+      <td>10</td>
+      <td>65</td>
+      <td>2.6</td>
+      <td>9g</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span style="color:#bb8844">Stone Golems</span></td>
+      <td>Large brown-grey cubes, slow and heavy</td>
+      <td>12</td>
+      <td>80</td>
+      <td>2.8</td>
+      <td>10g</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span style="color:#ff4444">Shadow Knights</span></td>
+      <td>Dark red spheres with rotating spike crowns</td>
+      <td>10</td>
+      <td>120</td>
+      <td>3.2</td>
+      <td>12g</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span style="color:#aacc44">Cursed Swarm</span></td>
+      <td>Tiny green-yellow spheres that jitter erratically</td>
+      <td>14</td>
+      <td>100</td>
+      <td>3.0</td>
+      <td>11g</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span style="color:#ff6644">Ancient Warlords</span></td>
+      <td>Large crimson spheres with protruding horns</td>
+      <td>12</td>
+      <td>160</td>
+      <td>3.4</td>
+      <td>14g</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span style="color:#44ddee">Spirit Horde</span></td>
+      <td>Glowing cyan dodecahedrons that spin and pulse</td>
+      <td>16</td>
+      <td>150</td>
+      <td>3.6</td>
+      <td>13g</td>
+    </tr>
+    <tr class="boss">
+      <td>8</td>
+      <td><span style="color:#ffcc44">Temple Guardians</span></td>
+      <td>Huge golden octahedrons with orbiting rings</td>
+      <td>4</td>
+      <td>700</td>
+      <td>1.8</td>
+      <td>50g</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span style="color:#aa44ff">Void Walkers</span></td>
+      <td>Dark violet icosahedrons that flicker and shimmer</td>
+      <td>18</td>
+      <td>200</td>
+      <td>4.0</td>
+      <td>15g</td>
+    </tr>
+    <tr class="boss">
+      <td>10</td>
+      <td><span style="color:#ff8844">The Sealed One</span></td>
+      <td>Massive red-gold sphere with double orbiting rings and pulsing core</td>
+      <td>1</td>
+      <td>2500</td>
+      <td>1.5</td>
+      <td>200g</td>
+    </tr>
+  </table>
+
+  <div class="tip"><strong>Tip:</strong> Wave 8 has only 4 enemies but each has 700 HP &mdash; make sure you have Frost towers to slow them. Wave 9 is the fastest wave at 4.0 speed. The final boss has 2500 HP but moves slowly; stack damage towers along long path segments.</div>
+
+  <h2>Strategy Guide</h2>
+  <h3>Early Game (Waves 1&ndash;3)</h3>
+  <p>Place 2&ndash;3 Fire towers near path bends where enemies spend the most time in range. Fire towers have the best cost-to-DPS ratio early on.</p>
+
+  <h3>Mid Game (Waves 4&ndash;7)</h3>
+  <p>Add Frost towers at chokepoints to slow enemies into kill zones. Place Arcane towers where the path is dense &mdash; chain damage adds up fast against swarms.</p>
+
+  <h3>Late Game (Waves 8&ndash;10)</h3>
+  <p>The Temple Guardians (wave 8) are slow but tanky. Stack towers along the longest straight segments. For The Sealed One (wave 10), you need concentrated firepower &mdash; multiple Earth and Arcane towers with Frost support.</p>
+
+  <h3>Tower Placement</h3>
+  <p>Path bends are the most valuable positions &mdash; towers placed at inner corners can hit enemies on two segments. The serpentine path has many U-turns, so look for spots where 3+ path segments are within range.</p>
+
+  <h2>Map</h2>
+  <p>The map is a 20&times;14 grid with a serpentine path from the <strong style="color:#ff4444">red portal</strong> (enemy spawn, top-left) to the <strong style="color:#44ff44">green portal</strong> (exit, right edge). Towers can only be placed on non-path tiles.</p>
+
+</body>
+</html>

@@ -63,72 +63,59 @@
 
       /* ─── HUD ─── */
       #hud {
-        position: absolute; top: 0; left: 0; right: 0;
+        position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+        width: 78%; max-width: 900px;
         display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 16px; z-index: 10;
-        background: linear-gradient(180deg, rgba(10,9,8,0.75) 0%, rgba(10,9,8,0.4) 80%, transparent 100%);
-        min-height: 52px;
+        padding: 14px 24px; z-index: 10;
+        background: linear-gradient(180deg, rgba(10,9,8,0.9) 0%, rgba(10,9,8,0.6) 80%, transparent 100%);
+        min-height: 70px; border-radius: 0 0 10px 10px;
       }
-      body.mobile #hud { padding: 6px 8px; min-height: 48px; }
+      body.mobile #hud { width: 92%; padding: 10px 14px; min-height: 56px; }
 
-      #hud-left { color: #d4c8a0; min-width: 120px; pointer-events: none; }
-      body.mobile #hud-left { min-width: 70px; }
-      #hud-left .stats { display: flex; gap: 18px; font-size: 16px; font-weight: bold; }
-      body.mobile #hud-left .stats { gap: 10px; font-size: 14px; }
+      #hud-left { color: #d4c8a0; pointer-events: none; }
+      #hud-left .stats { display: flex; gap: 28px; font-size: 26px; font-weight: bold; }
+      body.mobile #hud-left .stats { gap: 16px; font-size: 20px; }
       #gold-display { color: #ffcc44; }
       #lives-display { color: #ff8866; }
 
-      #hud-center { display: flex; align-items: center; gap: 10px; }
-      body.mobile #hud-center { gap: 6px; }
+      #hud-center { display: flex; align-items: center; gap: 14px; }
+      body.mobile #hud-center { gap: 8px; }
 
-      #wave-btn {
-        padding: 6px 18px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
-        background: rgba(138,126,96,0.35); border: 1px solid #8a7e60; color: #d4c8a0;
-        cursor: pointer; font-family: 'Georgia', serif; border-radius: 5px;
-        -webkit-tap-highlight-color: transparent;
-        box-shadow: 0 0 12px rgba(255,160,60,0.15); white-space: nowrap;
+      .hud-divider { width: 1px; height: 30px; background: rgba(138,126,96,0.3); }
+
+      #wave-info {
+        color: #d4c8a0; font-size: 16px; white-space: nowrap; padding: 9px 20px;
+        border-radius: 5px; cursor: pointer; letter-spacing: 1px;
+        background: rgba(138,126,96,0.35); border: 1px solid #8a7e60;
+        font-family: 'Georgia', serif; -webkit-tap-highlight-color: transparent;
       }
-      body.mobile #wave-btn { padding: 5px 12px; font-size: 11px; }
-
-      #wave-status {
-        color: #d4c8a0; font-size: 13px; opacity: 0.7;
-        text-align: center; pointer-events: none; white-space: nowrap;
-      }
-      body.mobile #wave-status { font-size: 11px; }
-      #enemies-left { font-size: 11px; opacity: 0.5; margin-left: 6px; }
-      body.mobile #enemies-left { font-size: 9px; }
-
-      .hud-divider { width: 1px; height: 20px; background: rgba(138,126,96,0.3); }
-
-      #auto-btn, #speed-btn {
-        font-family: 'Georgia', serif; cursor: pointer; border-radius: 4px;
+      body.mobile #wave-info { padding: 7px 12px; font-size: 14px; }
+      #auto-btn, #speed-btn, #pause-btn {
+        font-family: 'Georgia', serif; cursor: pointer; border-radius: 5px;
         -webkit-tap-highlight-color: transparent; letter-spacing: 1px; white-space: nowrap;
       }
-      #auto-btn { padding: 5px 12px; font-size: 11px; }
-      body.mobile #auto-btn { padding: 4px 8px; font-size: 10px; }
-      #speed-btn { padding: 5px 14px; font-size: 11px; font-weight: bold; min-width: 42px; }
-      body.mobile #speed-btn { padding: 4px 10px; font-size: 10px; min-width: 36px; }
-
-      #hud-right { color: #d4c8a0; text-align: right; min-width: 120px; pointer-events: none; }
-      body.mobile #hud-right { min-width: 70px; }
-      #wave-name { font-size: 12px; opacity: 0.5; }
-      body.mobile #wave-name { font-size: 10px; }
+#auto-btn { padding: 9px 20px; font-size: 16px; }
+      body.mobile #auto-btn { padding: 7px 12px; font-size: 14px; }
+      #speed-btn { padding: 9px 22px; font-size: 16px; font-weight: bold; min-width: 58px; }
+      body.mobile #speed-btn { padding: 7px 14px; font-size: 14px; min-width: 46px; }
+      #pause-btn { padding: 9px 18px; font-size: 16px; }
+      body.mobile #pause-btn { padding: 7px 12px; font-size: 14px; }
 
       /* ─── Toast ─── */
       #toast {
-        position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%);
         background: rgba(40,20,10,0.9); border: 1px solid rgba(212,200,160,0.3);
-        padding: 6px 18px; border-radius: 6px; color: #d4c8a0; font-size: 14px;
+        padding: 8px 22px; border-radius: 6px; color: #d4c8a0; font-size: 16px;
         letter-spacing: 1px; pointer-events: none; z-index: 15; white-space: nowrap;
       }
-      body.mobile #toast { top: 56px; font-size: 12px; }
+      body.mobile #toast { bottom: 70px; font-size: 12px; }
 
       /* ─── Tower Bar ─── */
       #tower-bar {
-        position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-        display: flex; gap: 8px; z-index: 10;
+        position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 10px; z-index: 10; pointer-events: none;
       }
-      body.mobile #tower-bar { bottom: 8px; gap: 6px; }
+      body.mobile #tower-bar { bottom: 6px; gap: 6px; }
 
       /* ─── Overlays ─── */
       .overlay {
@@ -197,19 +184,13 @@
         </div>
 
         <div id="hud-center">
-          <button id="wave-btn">&#x25B6; Wave 1</button>
-          <div id="wave-status" style="display:none">
-            <span id="wave-num">Wave 0/10</span>
-            <span id="enemies-left" style="display:none"></span>
-          </div>
+          <div id="wave-info">&#x25B6; Wave 1</div>
           <div class="hud-divider"></div>
           <button id="auto-btn">AUTO</button>
           <div class="hud-divider"></div>
           <button id="speed-btn">1x</button>
-        </div>
-
-        <div id="hud-right">
-          <div id="wave-name" style="display:none"></div>
+          <div class="hud-divider"></div>
+          <button id="pause-btn">&#x23F8;</button>
         </div>
       </div>
 
