@@ -7,25 +7,13 @@ const W = COLS * TILE, H = ROWS * TILE;
 
 const TOWER_TYPES = {
   fire:   { cost: 30, range: 3.5, damage: 12, rate: 0.9,  color: 0xff6644, emissive: 0xff4422, name: "Fire",   icon: "\u{1F525}", desc: "Fast, moderate dmg",
-    upgrades: [
-      { cost: 40,  damage: 18, rate: 0.85, range: 3.8 },
-      { cost: 70,  damage: 28, rate: 0.75, range: 4.2 },
-    ]},
+    upgrades: [ { cost: 25, damage: 18, rate: 0.85, range: 3.8 }, { cost: 45, damage: 28, rate: 0.75, range: 4.2 } ] },
   ice:    { cost: 40, range: 4.0, damage: 8,  rate: 1.2,  color: 0x44aaff, emissive: 0x2288dd, name: "Frost",  icon: "\u2744\uFE0F", desc: "Slows enemies 40%",
-    upgrades: [
-      { cost: 50,  damage: 12, rate: 1.1,  range: 4.5 },
-      { cost: 85,  damage: 18, rate: 1.0,  range: 5.0 },
-    ]},
+    upgrades: [ { cost: 30, damage: 12, rate: 1.1, range: 4.5 }, { cost: 55, damage: 18, rate: 1.0, range: 5.0 } ] },
   earth:  { cost: 50, range: 3.0, damage: 25, rate: 1.8,  color: 0x66ff88, emissive: 0x44cc66, name: "Earth",  icon: "\u{1FAA8}", desc: "Heavy dmg, slow",
-    upgrades: [
-      { cost: 60,  damage: 40, rate: 1.6,  range: 3.3 },
-      { cost: 100, damage: 65, rate: 1.4,  range: 3.6 },
-    ]},
+    upgrades: [ { cost: 35, damage: 40, rate: 1.6, range: 3.3 }, { cost: 65, damage: 65, rate: 1.4, range: 3.6 } ] },
   arcane: { cost: 70, range: 5.0, damage: 18, rate: 1.0,  color: 0xffcc44, emissive: 0xddaa22, name: "Arcane", icon: "\u2728", desc: "Long range, chains",
-    upgrades: [
-      { cost: 80,  damage: 28, rate: 0.9,  range: 5.5 },
-      { cost: 130, damage: 42, rate: 0.8,  range: 6.0 },
-    ]},
+    upgrades: [ { cost: 50, damage: 28, rate: 0.9, range: 5.5 }, { cost: 85, damage: 42, rate: 0.8, range: 6.0 } ] },
 };
 const SELL_REFUND = 0.65;
 
@@ -115,6 +103,96 @@ const ENEMY_VISUALS = {
   },
 };
 
+/* ══════════════════════════════════════════════════════
+   AUDIO ENGINE — Web Audio API synthesized sounds
+   ══════════════════════════════════════════════════════ */
+let audioCtx = null;
+let masterGain = null;
+let audioReady = false;
+
+function initAudio() {
+  if (audioReady) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.4;
+    masterGain.connect(audioCtx.destination);
+    audioReady = true;
+  } catch (e) { /* audio not supported */ }
+}
+
+function resumeAudio() {
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function playTone(freq, duration, gain, type, detune) {
+  if (!audioReady) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.setValueAtTime(freq, t);
+  if (detune) osc.detune.setValueAtTime(detune, t);
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.connect(g); g.connect(masterGain);
+  osc.start(t); osc.stop(t + duration + 0.01);
+}
+
+function playNoise(duration, freq, gain, type) {
+  if (!audioReady) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  const flt = audioCtx.createBiquadFilter();
+  osc.type = type || "sawtooth";
+  osc.frequency.setValueAtTime(freq, t);
+  flt.type = "lowpass"; flt.frequency.setValueAtTime(freq * 3, t);
+  flt.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.5), t + duration);
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.connect(flt); flt.connect(g); g.connect(masterGain);
+  osc.start(t); osc.stop(t + duration + 0.01);
+}
+
+function playWhiteNoise(duration, gain) {
+  if (!audioReady) return;
+  const t = audioCtx.currentTime;
+  const len = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const g = audioCtx.createGain();
+  const flt = audioCtx.createBiquadFilter();
+  flt.type = "bandpass"; flt.frequency.value = 3000; flt.Q.value = 0.5;
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  src.connect(flt); flt.connect(g); g.connect(masterGain);
+  src.start(t); src.stop(t + duration + 0.01);
+}
+
+const SFX = {
+  _lastHit: 0, _lastDeath: 0, _lastFire: 0,
+  towerFire: {
+    fire()   { if (!SFX._throttle("_lastFire", 60)) return; playNoise(0.07, 900, 0.12, "sawtooth"); playWhiteNoise(0.05, 0.06); },
+    ice()    { if (!SFX._throttle("_lastFire", 80)) return; playTone(1200, 0.12, 0.08, "sine"); playTone(1800, 0.1, 0.04, "sine"); },
+    earth()  { if (!SFX._throttle("_lastFire", 100)) return; playNoise(0.1, 120, 0.15, "square"); playTone(80, 0.12, 0.1, "sine"); },
+    arcane() { if (!SFX._throttle("_lastFire", 80)) return; playTone(600, 0.15, 0.06, "triangle"); playTone(900, 0.13, 0.04, "sine", 50); },
+  },
+  _throttle(key, minMs) { const now = performance.now(); if (now - SFX[key] < minMs) return false; SFX[key] = now; return true; },
+  hit() { if (!SFX._throttle("_lastHit", 30)) return; playWhiteNoise(0.03, 0.06); playTone(400, 0.05, 0.06, "square"); },
+  enemyDeath() { if (!SFX._throttle("_lastDeath", 50)) return; playTone(300, 0.12, 0.1, "sawtooth"); playTone(150, 0.2, 0.08, "sine"); playWhiteNoise(0.1, 0.05); },
+  enemyLeak() { playTone(200, 0.25, 0.12, "sine"); playTone(100, 0.35, 0.08, "sine"); },
+  towerPlace() { playTone(150, 0.1, 0.12, "square"); playWhiteNoise(0.06, 0.08); },
+  towerUpgrade() { playTone(400, 0.12, 0.08, "sine"); setTimeout(() => playTone(600, 0.12, 0.08, "sine"), 80); setTimeout(() => playTone(800, 0.18, 0.1, "sine"), 160); },
+  towerSell() { playTone(800, 0.06, 0.06, "sine"); playTone(600, 0.08, 0.05, "sine"); },
+  waveStart() { playTone(220, 0.25, 0.1, "sawtooth"); playTone(330, 0.2, 0.08, "sawtooth"); setTimeout(() => { playTone(440, 0.35, 0.12, "sawtooth"); playTone(550, 0.3, 0.06, "sine"); }, 150); },
+  gameOver() { playTone(120, 0.8, 0.15, "sawtooth"); playTone(80, 1.0, 0.12, "sine"); setTimeout(() => playTone(60, 1.2, 0.1, "sine"), 300); },
+  victory() { playTone(440, 0.25, 0.1, "sine"); setTimeout(() => playTone(550, 0.25, 0.1, "sine"), 120); setTimeout(() => playTone(660, 0.25, 0.1, "sine"), 240); setTimeout(() => { playTone(880, 0.5, 0.12, "sine"); playTone(660, 0.4, 0.06, "triangle"); }, 360); },
+  uiClick() { playTone(700, 0.03, 0.04, "sine"); },
+};
+
 function gridToWorld(col, row) {
   return new THREE.Vector3(col * TILE - W / 2 + TILE / 2, 0, row * TILE - H / 2 + TILE / 2);
 }
@@ -188,10 +266,10 @@ const mobile = isMobile();
 let speed = 1;
 let autoWave = true;
 let paused = false;
+let muted = false;
 let toastTimer = null;
 let state = null;
-let selectedTowerObj = null;  /* tower currently shown in popup */
-let _sceneRef = null;         /* scene reference for sell */
+let selectedTowerObj = null;
 
 /* ─── DOM HELPERS ─── */
 const $ = (id) => document.getElementById(id);
@@ -210,13 +288,10 @@ function updateGold() {
     const info = TOWER_TYPES[btn.dataset.type];
     btn.style.opacity = state.gold >= info.cost ? "1" : (mobile ? "0.35" : "0.5");
   });
-  /* Refresh popup upgrade affordability if open */
   if (selectedTowerObj) {
     const t = selectedTowerObj;
     const maxLvl = 1 + t.info.upgrades.length;
-    if (t.level < maxLvl) {
-      $("tp-upgrade").disabled = state.gold < t.info.upgrades[t.level - 1].cost;
-    }
+    if (t.level < maxLvl) $("tp-upgrade").disabled = state.gold < t.info.upgrades[t.level - 1].cost;
   }
 }
 
@@ -281,6 +356,15 @@ function updateSpeedBtn() {
   btn.style.color = speed > 1 ? "#ffcc44" : "#8a7e60";
 }
 
+function updateMuteBtn() {
+  const btn = $("mute-btn");
+  btn.textContent = muted ? "\u{1F507}" : "\u{1F50A}";
+  btn.style.background = muted ? "rgba(200,100,100,0.2)" : "rgba(138,126,96,0.1)";
+  btn.style.borderColor = muted ? "rgba(200,100,100,0.4)" : "rgba(138,126,96,0.25)";
+  btn.style.color = muted ? "#dd8888" : "#8a7e60";
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.4;
+}
+
 function selectTower(type) {
   if (state) state.selectedTower = type;
   if (selectedTowerObj) hideTowerPopup(null);
@@ -300,12 +384,14 @@ function showGameOver() {
   $("game-over").style.display = "";
   $("game-over-wave").textContent = "The temple has been lost. Wave " + state.wave + ".";
   updateWaveUI();
+  SFX.gameOver();
 }
 
 function showVictory() {
   $("victory-screen").style.display = "";
   $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
   updateWaveUI();
+  SFX.victory();
 }
 
 function startWave() {
@@ -314,6 +400,7 @@ function startWave() {
   state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
   const w = WAVES[state.wave - 1];
   updateWaveUI();
+  SFX.waveStart();
 }
 
 /* ─── TOWER POPUP ─── */
@@ -323,54 +410,41 @@ function showTowerPopup(tower, rangeCircle) {
   const info = tower.info;
   const lvl = tower.level;
   const maxLvl = 1 + info.upgrades.length;
-  const canUpgrade = lvl < maxLvl;
-  const nextUpgrade = canUpgrade ? info.upgrades[lvl - 1] : null;
+  const isMax = lvl >= maxLvl;
+  const nextUpgrade = !isMax ? info.upgrades[lvl - 1] : null;
   const colorHex = "#" + info.color.toString(16).padStart(6, "0");
 
   $("tp-icon").textContent = info.icon;
   $("tp-name").innerHTML = '<span style="color:' + colorHex + '">' + info.name + '</span>';
-  $("tp-level").textContent = "Lv " + lvl + "/" + maxLvl;
+  $("tp-level").textContent = isMax ? "" : "Lv " + lvl;
 
-  const curDps = (tower.damage / tower.rate).toFixed(1);
-  let statsHtml = "Damage: <strong>" + tower.damage + "</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.damage + '</span>';
+  let statsHtml = "";
+  if (isMax) {
+    statsHtml += '<div class="tp-max">\u2605 MAX \u2605</div>';
+  }
+  statsHtml += "Dmg: <strong>" + tower.damage + "</strong>";
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.damage + '</span>';
+  statsHtml += " &middot; " + (tower.damage / tower.rate).toFixed(1) + " dps";
   statsHtml += "<br>Rate: <strong>" + tower.rate.toFixed(2) + "s</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.rate.toFixed(2) + 's</span>';
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.rate.toFixed(2) + 's</span>';
   statsHtml += "<br>Range: <strong>" + tower.range.toFixed(1) + "</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.range.toFixed(1) + '</span>';
-  statsHtml += "<br>DPS: <strong>" + curDps + "</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + (nextUpgrade.damage / nextUpgrade.rate).toFixed(1) + '</span>';
-  statsHtml += "<br><span style='color:#8a7e60;font-size:11px'>Invested: " + tower.totalInvested + "g</span>";
-
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.range.toFixed(1) + '</span>';
   $("tp-stats").innerHTML = statsHtml;
 
   const upBtn = $("tp-upgrade");
-  if (canUpgrade) {
-    upBtn.textContent = "\u2B06 Upgrade " + nextUpgrade.cost + "g";
+  if (isMax) {
+    upBtn.style.display = "none";
+  } else {
+    upBtn.textContent = "\u2692 " + nextUpgrade.cost + "g";
     upBtn.disabled = state.gold < nextUpgrade.cost;
     upBtn.style.display = "";
-  } else {
-    upBtn.textContent = "MAX LEVEL";
-    upBtn.disabled = true;
-    upBtn.style.display = "";
   }
-
-  const sellValue = Math.floor(tower.totalInvested * SELL_REFUND);
-  $("tp-sell").textContent = "\u{1F4B0} Sell " + sellValue + "g";
-
-  popup.style.display = "";
-  popup.style.left = "50%";
-  popup.style.bottom = mobile ? "90px" : "130px";
-  popup.style.top = "auto";
-  popup.style.transform = "translateX(-50%)";
-
-  /* Show range circle on selected tower */
+  $("tp-sell").textContent = "\u2716 " + Math.floor(tower.totalInvested * SELL_REFUND) + "g";
+  popup.style.display = ""; popup.style.left = "50%"; popup.style.bottom = mobile ? "90px" : "130px"; popup.style.top = "auto"; popup.style.transform = "translateX(-50%)";
   if (rangeCircle) {
     const pos = tower.group.position;
-    rangeCircle.position.x = pos.x;
-    rangeCircle.position.z = pos.z;
-    rangeCircle.geometry.dispose();
-    rangeCircle.geometry = new THREE.RingGeometry(tower.range - 0.05, tower.range, 48);
+    rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
+    rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(tower.range - 0.05, tower.range, 48);
     rangeCircle.visible = true;
   }
 }
@@ -383,38 +457,30 @@ function hideTowerPopup(rangeCircle) {
 
 function upgradeTower(rangeCircle) {
   if (!selectedTowerObj || !state) return;
-  const tower = selectedTowerObj;
-  const info = tower.info;
-  const lvl = tower.level;
-  const maxLvl = 1 + info.upgrades.length;
-  if (lvl >= maxLvl) return;
-
+  const tower = selectedTowerObj, info = tower.info, lvl = tower.level;
+  if (lvl >= 1 + info.upgrades.length) return;
   const upgrade = info.upgrades[lvl - 1];
   if (state.gold < upgrade.cost) { showToast("Not enough gold!"); return; }
-
-  state.gold -= upgrade.cost;
-  tower.totalInvested += upgrade.cost;
-  tower.level = lvl + 1;
-  tower.damage = upgrade.damage;
-  tower.rate = upgrade.rate;
-  tower.range = upgrade.range;
-
-  /* Visual upgrade — scale orb & glow, increase emissive */
-  const scale = 1.0 + (tower.level - 1) * 0.25;
-  tower.orb.scale.setScalar(scale);
-  tower.glow.scale.set(scale * 1.1, scale * 1.1, 1);
-  tower.orb.material.emissiveIntensity = 2.0 + (tower.level - 1) * 1.2;
-
-  /* Scale tower body slightly taller */
-  tower.body.scale.y = 1.0 + (tower.level - 1) * 0.12;
-  tower.body.position.y = 1.1 + (tower.level - 1) * 0.1;
-  const orbBaseY = 2.2 + (tower.level - 1) * 0.2;
-  tower.orbBaseY = orbBaseY;
-  tower.orb.position.y = orbBaseY;
-  tower.glow.position.y = orbBaseY;
-  if (tower.light) tower.light.position.y = orbBaseY;
-
-  updateGold();
+  state.gold -= upgrade.cost; tower.totalInvested += upgrade.cost; tower.level = lvl + 1;
+  tower.damage = upgrade.damage; tower.rate = upgrade.rate; tower.range = upgrade.range;
+  const lvlUp = tower.level - 1;
+  /* Body: wider, taller, brighter */
+  tower.body.scale.set(1.0 + lvlUp * 0.15, 1.0 + lvlUp * 0.25, 1.0 + lvlUp * 0.15);
+  tower.body.position.y = 1.1 + lvlUp * 0.2;
+  tower.body.material.emissiveIntensity = 0.8 + lvlUp * 0.8;
+  tower.body.material.metalness = 0.6 + lvlUp * 0.15;
+  /* Orb: much bigger, brighter */
+  tower.orb.scale.setScalar(1.0 + lvlUp * 0.5);
+  tower.orb.material.emissiveIntensity = 2.0 + lvlUp * 2.0;
+  /* Glow: significantly larger */
+  tower.glow.scale.set(1.0 + lvlUp * 0.7, 1.0 + lvlUp * 0.7, 1);
+  tower.glow.material.opacity = 0.3 + lvlUp * 0.15;
+  /* Reposition orb/glow higher */
+  const orbBaseY = 2.2 + lvlUp * 0.35;
+  tower.orbBaseY = orbBaseY; tower.orb.position.y = orbBaseY; tower.glow.position.y = orbBaseY;
+  /* Light: brighter, wider reach */
+  if (tower.light) { tower.light.position.y = orbBaseY; tower.light.intensity = 30 + lvlUp * 30; tower.light.distance = 10 + lvlUp * 4; }
+  updateGold(); SFX.towerUpgrade();
   showToast(info.name + " \u2192 Lv " + tower.level + "!");
   showTowerPopup(tower, rangeCircle);
 }
@@ -423,25 +489,13 @@ function sellTower(rangeCircle) {
   if (!selectedTowerObj || !state) return;
   const tower = selectedTowerObj;
   const sellValue = Math.floor(tower.totalInvested * SELL_REFUND);
-
   state.gold += sellValue;
-
-  /* Remove from scene */
   if (tower.group.parent) tower.group.parent.remove(tower.group);
-
-  /* Return light to pool */
-  if (tower.light) {
-    tower.light.intensity = 0;
-    tower.light.position.set(0, -100, 0);
-  }
-
-  /* Remove from state */
+  if (tower.light) { tower.light.intensity = 0; tower.light.position.set(0, -100, 0); }
   const idx = state.towers.indexOf(tower);
   if (idx !== -1) state.towers.splice(idx, 1);
   state.towerMeshMap.delete(tower.col + "," + tower.row);
-
-  updateGold();
-  hideTowerPopup(rangeCircle);
+  updateGold(); SFX.towerSell(); hideTowerPopup(rangeCircle);
   showToast("Sold for " + sellValue + "g");
 }
 
@@ -476,6 +530,7 @@ function buildTowerBar() {
 
 /* ─── INIT 3D GAME ─── */
 function init() {
+  initAudio(); resumeAudio();
   $("title-screen").style.display = "none";
   $("game-screen").style.display = "";
 
@@ -692,30 +747,21 @@ function init() {
     const pos = gridToWorld(col, row);
     const group = new THREE.Group();
     group.position.set(pos.x, 0, pos.z);
-
     const base = new THREE.Mesh(towerGeo.base, darkStoneMat);
     base.position.y = 0.15; base.castShadow = !mobile; group.add(base);
-
-    const body = new THREE.Mesh(towerGeo[type], towerMat[type]);
+    const body = new THREE.Mesh(towerGeo[type], towerMat[type].clone());
     if (type === "ice") body.rotation.y = Math.PI/4;
     body.position.y = 1.1; body.castShadow = !mobile; group.add(body);
-
     const orb = new THREE.Mesh(towerGeo.orb, towerOrbMat[type].clone());
     orb.position.y = 2.2; group.add(orb);
-
     const glow = new THREE.Sprite(towerGlowMat[type].clone());
     glow.scale.set(1.0, 1.0, 1); glow.position.y = 2.2; group.add(glow);
-
-    /* Grab a pre-allocated light from the pool */
     let light = null;
     if (nextLight < towerLightPool.length) {
       light = towerLightPool[nextLight++];
-      light.color.setHex(info.color);
-      light.intensity = 30;
-      light.position.set(pos.x, 2.2, pos.z);
+      light.color.setHex(info.color); light.intensity = 30; light.position.set(pos.x, 2.2, pos.z);
     }
     scene.add(group);
-
     const tower = {
       group, body, orb, glow, light, col, row, type, info, cooldown: 0,
       level: 1, damage: info.damage, rate: info.rate, range: info.range,
@@ -856,6 +902,11 @@ function init() {
     mesh.position.copy(tower.group.position); mesh.position.y = 2.2;
     scene.add(mesh);
     state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.damage, type: tower.type });
+    /* Tower fire sound */
+    const fn = SFX.towerFire[tower.type];
+    if (fn) fn();
+    /* Muzzle flash */
+    spawnMuzzleFlash(tower);
   }
 
   /* ─── PATH FOLLOWING ─── */
@@ -863,6 +914,9 @@ function init() {
     if (!enemy.alive) return;
     const pts = pathWorldPoints();
     if (enemy.pathIndex >= pts.length - 1) {
+      /* Leak VFX + sound */
+      spawnLeakVFX(enemy.group.position.x, enemy.group.position.y, enemy.group.position.z);
+      SFX.enemyLeak();
       enemy.alive = false; scene.remove(enemy.group); state.enemiesAlive--;
       state.lives = Math.max(0, state.lives - 1); updateLives();
       if (state.lives <= 0 && !state.gameOver) { state.gameOver = true; showGameOver(); }
@@ -907,54 +961,39 @@ function init() {
     const cell = getGridFromXY(clientX, clientY);
     if (!cell) { hideTowerPopup(rangeCircle); return; }
     const { col, row } = cell;
-
-    /* Click on existing tower → open upgrade/sell popup */
     const existing = state.towerMeshMap.get(col + "," + row);
     if (existing) {
-      if (selectedTowerObj === existing) {
-        hideTowerPopup(rangeCircle);
-      } else {
-        showTowerPopup(existing, rangeCircle);
-      }
+      if (selectedTowerObj === existing) hideTowerPopup(rangeCircle);
+      else showTowerPopup(existing, rangeCircle);
       return;
     }
-
-    /* Close popup if clicking elsewhere */
-    if (selectedTowerObj) { hideTowerPopup(rangeCircle); }
-
+    if (selectedTowerObj) hideTowerPopup(rangeCircle);
     if (isPathTile(col, row)) { showToast("Can't build on the path"); return; }
     const info = TOWER_TYPES[state.selectedTower];
     if (state.gold < info.cost) { showToast("Not enough gold!"); return; }
     state.gold -= info.cost; updateGold();
     createTower(col, row, state.selectedTower);
+    SFX.towerPlace();
   }
 
   function showHover(clientX, clientY) {
-    if (selectedTowerObj) return; /* popup open — don't override range circle */
+    if (selectedTowerObj) return;
     const cell = getGridFromXY(clientX, clientY);
     if (!cell) { hoverRing.visible = false; rangeCircle.visible = false; return; }
-
-    /* Hovering over existing tower → show its range */
     const existing = state.towerMeshMap.get(cell.col + "," + cell.row);
     if (existing) {
       hoverRing.visible = false;
       const pos = existing.group.position;
       rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-      rangeCircle.geometry.dispose();
-      rangeCircle.geometry = new THREE.RingGeometry(existing.range - 0.05, existing.range, 48);
-      rangeCircle.visible = true;
-      return;
+      rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(existing.range - 0.05, existing.range, 48);
+      rangeCircle.visible = true; return;
     }
-
-    if (isPathTile(cell.col, cell.row)) {
-      hoverRing.visible = false; rangeCircle.visible = false; return;
-    }
+    if (isPathTile(cell.col, cell.row)) { hoverRing.visible = false; rangeCircle.visible = false; return; }
     const pos = gridToWorld(cell.col, cell.row);
     hoverRing.position.x = pos.x; hoverRing.position.z = pos.z; hoverRing.visible = true;
     const s = TOWER_TYPES[state.selectedTower].range;
     rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-    rangeCircle.geometry.dispose();
-    rangeCircle.geometry = new THREE.RingGeometry(s - 0.05, s, 48);
+    rangeCircle.geometry.dispose(); rangeCircle.geometry = new THREE.RingGeometry(s - 0.05, s, 48);
     rangeCircle.visible = true;
   }
 
@@ -974,7 +1013,7 @@ function init() {
   function onWheel(e) { camDist = Math.max(12, Math.min(45, camDist + e.deltaY * 0.02)); camHeight = camDist * 0.9; }
   function onCtx(e) { e.preventDefault(); }
 
-  function onMouseDownAll(e) { onMouseDown(e); onMouseDownPlace(e); }
+  function onMouseDownAll(e) { resumeAudio(); onMouseDown(e); onMouseDownPlace(e); }
   el.addEventListener("mousedown", onMouseDownAll);
   document.addEventListener("mouseup", onMouseUpGlobal);
   document.addEventListener("mousemove", onMouseMoveGlobal);
@@ -994,6 +1033,7 @@ function init() {
 
   function onTouchStart(e) {
     e.preventDefault();
+    resumeAudio();
     const touches = e.touches;
     if (touches.length === 1) {
       touchMode = "tap";
@@ -1049,6 +1089,142 @@ function init() {
   el.addEventListener("touchstart", onTouchStart, { passive: false });
   el.addEventListener("touchmove", onTouchMove, { passive: false });
   el.addEventListener("touchend", onTouchEnd, { passive: false });
+
+  /* ══════════════════════════════════════════════════════
+     VFX PARTICLE SYSTEM
+     ══════════════════════════════════════════════════════ */
+  const MAX_PARTICLES = mobile ? 200 : 500;
+  const particlePositions = new Float32Array(MAX_PARTICLES * 3);
+  const particleColors = new Float32Array(MAX_PARTICLES * 3);
+  const particleSizes = new Float32Array(MAX_PARTICLES);
+  const particleVelocities = []; /* { vx,vy,vz, life, maxLife, idx } */
+
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    particlePositions[i * 3] = 0; particlePositions[i * 3 + 1] = -100; particlePositions[i * 3 + 2] = 0;
+    particleColors[i * 3] = 1; particleColors[i * 3 + 1] = 1; particleColors[i * 3 + 2] = 1;
+    particleSizes[i] = 0;
+  }
+
+  const particleGeo = new THREE.BufferGeometry();
+  particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+  particleGeo.setAttribute("color", new THREE.BufferAttribute(particleColors, 3));
+  particleGeo.setAttribute("size", new THREE.BufferAttribute(particleSizes, 1));
+
+  /* Custom shader for per-particle size + color */
+  const particleMat = new THREE.PointsMaterial({
+    size: 0.12,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+  const particleMesh = new THREE.Points(particleGeo, particleMat);
+  scene.add(particleMesh);
+
+  let nextParticle = 0;
+
+  function emitParticles(x, y, z, color, count, spread, speed, lifetime) {
+    const c = new THREE.Color(color);
+    for (let i = 0; i < count; i++) {
+      const idx = nextParticle % MAX_PARTICLES;
+      nextParticle++;
+      particlePositions[idx * 3] = x;
+      particlePositions[idx * 3 + 1] = y;
+      particlePositions[idx * 3 + 2] = z;
+      particleColors[idx * 3] = c.r;
+      particleColors[idx * 3 + 1] = c.g;
+      particleColors[idx * 3 + 2] = c.b;
+      particleSizes[idx] = 0.15 + Math.random() * 0.1;
+
+      const vx = (Math.random() - 0.5) * spread * speed;
+      const vy = Math.random() * spread * speed * 0.7 + speed * 0.3;
+      const vz = (Math.random() - 0.5) * spread * speed;
+      particleVelocities.push({ vx, vy, vz, life: lifetime, maxLife: lifetime, idx });
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i = particleVelocities.length - 1; i >= 0; i--) {
+      const p = particleVelocities[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        particlePositions[p.idx * 3 + 1] = -100;
+        particleSizes[p.idx] = 0;
+        particleVelocities.splice(i, 1);
+        continue;
+      }
+      const t = p.life / p.maxLife;
+      particlePositions[p.idx * 3] += p.vx * dt;
+      particlePositions[p.idx * 3 + 1] += p.vy * dt;
+      particlePositions[p.idx * 3 + 2] += p.vz * dt;
+      p.vy -= 2.5 * dt; /* gravity */
+      particleSizes[p.idx] = (0.08 + 0.12 * t);
+      /* Fade alpha via color brightness */
+      const fade = t * t;
+      const ci = p.idx * 3;
+      particleColors[ci] *= (1 - dt * 2) + dt * 2 * fade;
+    }
+    particleGeo.attributes.position.needsUpdate = true;
+    particleGeo.attributes.color.needsUpdate = true;
+    particleGeo.attributes.size.needsUpdate = true;
+  }
+
+  /* ─── VFX HELPERS ─── */
+  /* Impact burst when projectile hits */
+  function spawnHitVFX(x, y, z, towerType) {
+    const color = TOWER_TYPES[towerType]?.color || 0xffffff;
+    const count = mobile ? 4 : 8;
+    emitParticles(x, y, z, color, count, 1.0, 2.5, 0.3);
+  }
+
+  /* Death explosion */
+  function spawnDeathVFX(x, y, z, enemyType) {
+    const vis = ENEMY_VISUALS[enemyType];
+    const color = vis ? vis.bodyColor : 0xff4444;
+    const count = mobile ? 8 : 16;
+    emitParticles(x, y, z, color, count, 1.5, 3.5, 0.5);
+    /* White core flash */
+    emitParticles(x, y, z, 0xffffff, mobile ? 3 : 6, 0.5, 1.5, 0.2);
+  }
+
+  /* Muzzle flash on tower orb */
+  function spawnMuzzleFlash(tower) {
+    const color = tower.info.color;
+    const pos = tower.group.position;
+    emitParticles(pos.x, 2.2, pos.z, color, mobile ? 2 : 4, 0.4, 1.5, 0.12);
+  }
+
+  /* Enemy leak flash at exit */
+  function spawnLeakVFX(x, y, z) {
+    emitParticles(x, y, z, 0xff2222, mobile ? 5 : 10, 1.2, 2.0, 0.4);
+  }
+
+  /* Damage flash on enemy body — brief emissive spike */
+  const damageFlashes = []; /* { enemy, timer } */
+
+  function flashEnemyDamage(enemy) {
+    if (!enemy.alive) return;
+    enemy.body.material.emissiveIntensity = 4.0;
+    damageFlashes.push({ enemy, timer: 0.08 });
+  }
+
+  function updateDamageFlashes(dt) {
+    for (let i = damageFlashes.length - 1; i >= 0; i--) {
+      const f = damageFlashes[i];
+      f.timer -= dt;
+      if (f.timer <= 0) {
+        if (f.enemy.alive && f.enemy.vis) {
+          f.enemy.body.material.emissiveIntensity = f.enemy.vis.emissiveIntensity;
+        }
+        damageFlashes.splice(i, 1);
+      } else if (f.enemy.alive) {
+        const t = f.timer / 0.08;
+        f.enemy.body.material.emissiveIntensity = f.enemy.vis.emissiveIntensity + (4.0 - f.enemy.vis.emissiveIntensity) * t;
+      }
+    }
+  }
 
   /* ─── ANIMATION LOOP ─── */
   let time = 0;
@@ -1216,8 +1392,14 @@ function init() {
           if (p.type === "ice") p.target.slowTimer = 2.0;
           if (p.type === "arcane") {
             let cc = 0; const hitPos = p.target.group.position.clone();
-            state.enemies.forEach(e => { if (!e.alive || e === p.target || cc >= 2) return; if (e.group.position.distanceTo(hitPos) < 2.5) { e.hp -= p.damage * 0.5; cc++; } });
+            state.enemies.forEach(e => { if (!e.alive || e === p.target || cc >= 2) return; if (e.group.position.distanceTo(hitPos) < 2.5) { e.hp -= p.damage * 0.5; flashEnemyDamage(e); cc++; } });
           }
+          /* Hit VFX + sound */
+          const hp = p.target.group.position;
+          spawnHitVFX(hp.x, hp.y, hp.z, p.type);
+          flashEnemyDamage(p.target);
+          SFX.hit();
+
           const ratio = Math.max(0, p.target.hp / p.target.maxHp);
           const hs = p.target.hpScale || 1;
           p.target.hpFill.scale.x = ratio * hs;
@@ -1225,6 +1407,9 @@ function init() {
           if (ratio < 0.4) p.target.hpFill.material.color.setHex(0xff8800);
           if (ratio < 0.2) p.target.hpFill.material.color.setHex(0xff0000);
           if (p.target.hp <= 0) {
+            /* Death VFX + sound */
+            spawnDeathVFX(hp.x, hp.y, hp.z, p.target.type);
+            SFX.enemyDeath();
             p.target.alive = false; scene.remove(p.target.group); state.enemiesAlive--;
             state.gold += p.target.reward; updateGold();
           }
@@ -1234,6 +1419,10 @@ function init() {
 
       state.enemies.forEach(e => { if (!e.alive && e.group.parent) scene.remove(e.group); });
       state.enemies = state.enemies.filter(e => e.alive);
+
+      /* Update VFX */
+      updateParticles(dt);
+      updateDamageFlashes(dt);
     }
 
     renderer.render(scene, camera);
@@ -1254,12 +1443,13 @@ buildTowerBar();
 updateAutoBtn();
 updateSpeedBtn();
 updatePauseBtn();
+updateMuteBtn();
 
 $("start-btn").addEventListener("click", init);
-$("wave-info").addEventListener("click", startWave);
-$("auto-btn").addEventListener("click", () => { autoWave = !autoWave; updateAutoBtn(); });
-$("speed-btn").addEventListener("click", () => { speed = speed >= 3 ? 1 : speed + 1; updateSpeedBtn(); });
-$("pause-btn").addEventListener("click", () => { paused = !paused; updatePauseBtn(); });
+$("wave-info").addEventListener("click", () => { resumeAudio(); startWave(); });
+$("auto-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); autoWave = !autoWave; updateAutoBtn(); });
+$("speed-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); speed = speed >= 3 ? 1 : speed + 1; updateSpeedBtn(); });
+$("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); paused = !paused; updatePauseBtn(); });
+$("mute-btn").addEventListener("click", () => { muted = !muted; updateMuteBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
 $("replay-btn").addEventListener("click", () => window.location.reload());
-/* Popup buttons are wired inside init() after rangeCircle is created */
