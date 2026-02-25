@@ -1,683 +1,19 @@
 import * as THREE from "three";
-
-/* ─── CONSTANTS ─── */
-const TILE = 1.4;
-const COLS = 20, ROWS = 14;
-const W = COLS * TILE, H = ROWS * TILE;
-
-const TOWER_TYPES = {
-  fire:   { cost: 30, range: 3.5, damage: 12, rate: 0.9,  color: 0xff6644, emissive: 0xff4422, name: "Fire",   icon: "\u{1F525}", desc: "Fast, moderate dmg",
-    upgrades: [ { cost: 25, damage: 18, rate: 0.85, range: 3.8 }, { cost: 45, damage: 28, rate: 0.75, range: 4.2 } ] },
-  ice:    { cost: 40, range: 4.0, damage: 8,  rate: 1.2,  color: 0x44aaff, emissive: 0x2288dd, name: "Frost",  icon: "\u2744\uFE0F", desc: "Slows enemies 40%",
-    upgrades: [ { cost: 30, damage: 12, rate: 1.1, range: 4.5 }, { cost: 55, damage: 18, rate: 1.0, range: 5.0 } ] },
-  earth:  { cost: 50, range: 3.0, damage: 25, rate: 1.8,  color: 0x66ff88, emissive: 0x44cc66, name: "Earth",  icon: "\u{1FAA8}", desc: "Heavy dmg, slow",
-    upgrades: [ { cost: 35, damage: 40, rate: 1.6, range: 3.3 }, { cost: 65, damage: 65, rate: 1.4, range: 3.6 } ] },
-  arcane: { cost: 70, range: 5.0, damage: 18, rate: 1.0,  color: 0xffcc44, emissive: 0xddaa22, name: "Arcane", icon: "\u2728", desc: "Long range, chains",
-    upgrades: [ { cost: 50, damage: 28, rate: 0.9, range: 5.5 }, { cost: 85, damage: 42, rate: 0.8, range: 6.0 } ] },
-};
-const SELL_REFUND = 0.65;
-
-const PATH_POINTS = [
-  [0,1],  [4,1],  [4,4],  [1,4],  [1,7],
-  [6,7],  [6,2],  [9,2],  [9,7],  [9,10],
-  [3,10], [3,12], [10,12],[10,9], [14,9],
-  [14,5], [11,5], [11,2], [14,2], [17,2],
-  [17,6], [14,6], [14,11],[17,11],[17,8],
-  [19,8],
-];
-
-const WAVES = [
-  /* Wave 1-3: single type intro */
-  { name: "Forgotten Shades", groups: [
-    { type: "shade", count: 8, hp: 50, reward: 8, delay: 0.9 },
-  ]},
-  { name: "Temple Wraiths", groups: [
-    { type: "wraith", count: 10, hp: 65, reward: 9, delay: 0.8 },
-  ]},
-  { name: "Stone Golems", groups: [
-    { type: "golem", count: 12, hp: 80, reward: 10, delay: 0.75 },
-  ]},
-  /* Wave 4: Knights with shade scouts */
-  { name: "Shadow Vanguard", groups: [
-    { type: "shade", count: 3, hp: 40, reward: 6, delay: 0.5 },
-    { type: "knight", count: 8, hp: 120, reward: 12, delay: 0.7 },
-  ]},
-  /* Wave 5: Swarm with wraith flankers */
-  { name: "Cursed Swarm", groups: [
-    { type: "swarm", count: 10, hp: 100, reward: 11, delay: 0.45 },
-    { type: "wraith", count: 4, hp: 90, reward: 10, delay: 0.7 },
-  ]},
-  /* Wave 6: Warlords with knight guards */
-  { name: "Warlord Warband", groups: [
-    { type: "knight", count: 4, hp: 100, reward: 10, delay: 0.6 },
-    { type: "warlord", count: 8, hp: 160, reward: 14, delay: 0.65 },
-    { type: "knight", count: 3, hp: 100, reward: 10, delay: 0.5 },
-  ]},
-  /* Wave 7: True horde — spirits + swarm + wraiths */
-  { name: "Spirit Horde", groups: [
-    { type: "swarm", count: 6, hp: 80, reward: 9, delay: 0.3 },
-    { type: "spirit", count: 8, hp: 150, reward: 13, delay: 0.45 },
-    { type: "wraith", count: 4, hp: 120, reward: 11, delay: 0.6 },
-    { type: "swarm", count: 5, hp: 80, reward: 9, delay: 0.25 },
-  ]},
-  /* Wave 8: Guardians with warlord escort */
-  { name: "Temple Guardians", groups: [
-    { type: "warlord", count: 3, hp: 200, reward: 18, delay: 1.0 },
-    { type: "guardian", count: 3, hp: 700, reward: 50, delay: 2.0 },
-    { type: "warlord", count: 2, hp: 200, reward: 18, delay: 0.8 },
-  ]},
-  /* Wave 9: Fast mixed rush */
-  { name: "Void Onslaught", groups: [
-    { type: "knight", count: 4, hp: 150, reward: 12, delay: 0.35 },
-    { type: "voidwalker", count: 10, hp: 200, reward: 15, delay: 0.4 },
-    { type: "spirit", count: 5, hp: 180, reward: 13, delay: 0.35 },
-    { type: "knight", count: 3, hp: 150, reward: 12, delay: 0.3 },
-  ]},
-  /* Wave 10: Boss with guardian escorts */
-  { name: "The Sealed One", groups: [
-    { type: "guardian", count: 2, hp: 500, reward: 40, delay: 2.0 },
-    { type: "boss", count: 1, hp: 2500, reward: 200, delay: 3.0 },
-  ]},
-];
-
-/* ─── ENDLESS MODE WAVE GENERATOR ─── */
-const ENDLESS_NAMES = [
-  "Risen","Empowered","Ancient","Abyssal","Infernal","Spectral","Corrupted","Forsaken","Eldritch","Ascended",
-];
-const ENDLESS_BOSS_NAMES = [
-  "Herald of Ruin","Dread Colossus","Void Titan","Flame Archon","Frozen Leviathan",
-  "Stone Primarch","Shadow Overlord","Spirit Sovereign","Chaos Incarnate","The Unbound",
-];
-
-function generateEndlessWave(waveNum) {
-  const n = waveNum - WAVES.length; /* endless wave index: 1, 2, 3... */
-  const isBoss = n % 5 === 0;
-  const isMega = n % 10 === 0;
-
-  /* Scaling factors */
-  const hpScale = Math.pow(1.22, n);
-  /* Speed multiplier: enemies get faster each endless wave, capping at ~1.5x their base */
-  const speedMult = Math.min(1.0 + n * 0.025, 1.5);
-
-  const pool = ["shade","wraith","golem","knight","swarm","warlord","spirit","voidwalker"];
-  const groups = [];
-  let name;
-
-  if (isMega) {
-    name = ENDLESS_BOSS_NAMES[(Math.floor(n / 10) - 1) % ENDLESS_BOSS_NAMES.length];
-    const escortType = pool[(n + 3) % pool.length];
-    groups.push({ type: escortType, count: 4, hp: Math.round(150 * hpScale), reward: Math.round(12 + n * 1.5), delay: 0.6 });
-    groups.push({ type: "boss", count: 2, hp: Math.round(2500 * hpScale), reward: Math.round(200 + n * 20), delay: 2.5 });
-  } else if (isBoss) {
-    name = ENDLESS_BOSS_NAMES[(Math.floor(n / 5) - 1) % ENDLESS_BOSS_NAMES.length];
-    const escortType = pool[(n + 1) % pool.length];
-    groups.push({ type: escortType, count: 3, hp: Math.round(120 * hpScale), reward: Math.round(10 + n), delay: 0.8 });
-    groups.push({ type: "guardian", count: 3, hp: Math.round(700 * hpScale), reward: Math.round(50 + n * 8), delay: 1.5 });
-  } else {
-    /* Mixed: pick 2-3 types */
-    const idx = (n - 1) % pool.length;
-    const primary = pool[idx];
-    const secondary = pool[(idx + 3) % pool.length];
-    const prefix = ENDLESS_NAMES[(Math.floor((n - 1) / pool.length)) % ENDLESS_NAMES.length];
-    const baseName = WAVES.find(w => w.groups.some(g => g.type === primary))?.name || primary;
-    name = prefix + " " + baseName;
-
-    const totalCount = Math.min(8 + Math.floor(n * 1.2), 30);
-    const secCount = Math.max(2, Math.floor(totalCount * 0.3));
-    const priCount = totalCount - secCount;
-    const baseHp = (80 + n * 15);
-    const reward = Math.round(10 + n * 1.5);
-    const delay = Math.max(0.2, 0.6 - n * 0.01);
-
-    groups.push({ type: secondary, count: secCount, hp: Math.round(baseHp * 0.7 * hpScale), reward: Math.round(reward * 0.8), delay: delay * 0.8 });
-    groups.push({ type: primary, count: priCount, hp: Math.round(baseHp * hpScale), reward, delay });
-    if (n >= 5 && n % 3 === 0) {
-      const tertiary = pool[(idx + 5) % pool.length];
-      const terCount = Math.max(2, Math.floor(totalCount * 0.15));
-      groups.push({ type: tertiary, count: terCount, hp: Math.round(baseHp * 1.2 * hpScale), reward: Math.round(reward * 1.2), delay: delay * 1.2 });
-    }
-  }
-
-  return { name, groups, speedMult };
-}
-
-/* Flatten a wave definition (with groups) into a sequential spawn list */
-function buildSpawnList(waveDef) {
-  const list = [];
-  const sMult = waveDef.speedMult || 1.0;
-  for (const g of waveDef.groups) {
-    const speed = (ENEMY_VISUALS[g.type]?.baseSpeed || 2.5) * sMult;
-    for (let i = 0; i < g.count; i++) {
-      list.push({ type: g.type, hp: g.hp, speed, reward: g.reward, delay: g.delay });
-    }
-  }
-  return list;
-}
-
-function getWaveInfo(waveNum) {
-  const raw = waveNum <= WAVES.length ? WAVES[waveNum - 1] : generateEndlessWave(waveNum);
-  const spawnList = buildSpawnList(raw);
-  return { name: raw.name, groups: raw.groups, spawnList, enemies: spawnList.length };
-}
-
-/* Lightweight version for UI display — avoids building full spawnList */
-function getWavePreview(waveNum) {
-  const raw = waveNum <= WAVES.length ? WAVES[waveNum - 1] : generateEndlessWave(waveNum);
-  let total = 0;
-  for (const g of raw.groups) total += g.count;
-  return { name: raw.name, enemies: total };
-}
-
-const ENEMY_VISUALS = {
-  shade: {
-    bodyColor: 0x442244, emissive: 0x331133, emissiveIntensity: 0.6,
-    glowColor: 0x663366, eyeColor: 0xff44ff,
-    scale: 0.75, opacity: 0.6, hpBarColor: 0xcc66cc,
-    bobSpeed: 6, bobAmp: 0.08, spinSpeed: 0, baseSpeed: 3.2,
-  },
-  wraith: {
-    bodyColor: 0x8899bb, emissive: 0x556688, emissiveIntensity: 0.8,
-    glowColor: 0x8899cc, eyeColor: 0xaaccff,
-    scale: 0.8, opacity: 0.45, hpBarColor: 0x88aadd,
-    bobSpeed: 3, bobAmp: 0.12, spinSpeed: 0, baseSpeed: 2.8,
-  },
-  golem: {
-    bodyColor: 0x554433, emissive: 0x221100, emissiveIntensity: 0.2,
-    glowColor: 0x443322, eyeColor: 0xffaa33,
-    scale: 1.3, opacity: 0.95, hpBarColor: 0xbb8844,
-    bobSpeed: 2, bobAmp: 0.02, spinSpeed: 0, baseSpeed: 2.0,
-  },
-  knight: {
-    bodyColor: 0x331111, emissive: 0x440000, emissiveIntensity: 0.7,
-    glowColor: 0x661122, eyeColor: 0xff2222,
-    scale: 1.0, opacity: 0.85, hpBarColor: 0xff4444,
-    bobSpeed: 4, bobAmp: 0.04, spinSpeed: 1.5, baseSpeed: 3.4,
-  },
-  swarm: {
-    bodyColor: 0x557722, emissive: 0x334400, emissiveIntensity: 0.5,
-    glowColor: 0x669933, eyeColor: 0xccff44,
-    scale: 0.55, opacity: 0.8, hpBarColor: 0xaacc44,
-    bobSpeed: 10, bobAmp: 0.06, spinSpeed: 0, baseSpeed: 3.8,
-  },
-  warlord: {
-    bodyColor: 0x551122, emissive: 0x440011, emissiveIntensity: 0.6,
-    glowColor: 0x882233, eyeColor: 0xff6644,
-    scale: 1.25, opacity: 0.9, hpBarColor: 0xff6644,
-    bobSpeed: 3, bobAmp: 0.03, spinSpeed: 0.8, baseSpeed: 2.4,
-  },
-  spirit: {
-    bodyColor: 0x225566, emissive: 0x11aacc, emissiveIntensity: 1.2,
-    glowColor: 0x22ccee, eyeColor: 0x44ffff,
-    scale: 0.85, opacity: 0.7, hpBarColor: 0x44ddee,
-    bobSpeed: 5, bobAmp: 0.1, spinSpeed: 3.0, baseSpeed: 3.6,
-  },
-  guardian: {
-    bodyColor: 0xaa8833, emissive: 0xcc9922, emissiveIntensity: 1.5,
-    glowColor: 0xffcc44, eyeColor: 0xffee88,
-    scale: 1.8, opacity: 0.9, hpBarColor: 0xffcc44,
-    bobSpeed: 2, bobAmp: 0.05, spinSpeed: 1.0, baseSpeed: 1.8,
-  },
-  voidwalker: {
-    bodyColor: 0x110022, emissive: 0x220044, emissiveIntensity: 0.9,
-    glowColor: 0x440088, eyeColor: 0xcc44ff,
-    scale: 0.9, opacity: 0.75, hpBarColor: 0xaa44ff,
-    bobSpeed: 7, bobAmp: 0.07, spinSpeed: 2.0, baseSpeed: 4.0,
-  },
-  boss: {
-    bodyColor: 0x661111, emissive: 0xff4400, emissiveIntensity: 2.0,
-    glowColor: 0xff6622, eyeColor: 0xffdd44,
-    scale: 2.2, opacity: 0.95, hpBarColor: 0xff8844,
-    bobSpeed: 1.5, bobAmp: 0.04, spinSpeed: 0.5, baseSpeed: 1.5,
-  },
-};
-
-/* ══════════════════════════════════════════════════════
-   AUDIO ENGINE — Web Audio API synthesized sounds
-   ══════════════════════════════════════════════════════ */
-let audioCtx = null;
-let masterGain = null;
-let audioReady = false;
-
-function initAudio() {
-  if (audioReady) return;
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.4;
-    masterGain.connect(audioCtx.destination);
-    audioReady = true;
-  } catch (e) { /* audio not supported */ }
-}
-
-function resumeAudio() {
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-}
-
-function playTone(freq, duration, gain, type, detune) {
-  if (!audioReady) return;
-  const t = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  osc.type = type || "sine";
-  osc.frequency.setValueAtTime(freq, t);
-  if (detune) osc.detune.setValueAtTime(detune, t);
-  g.gain.setValueAtTime(gain, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  osc.connect(g); g.connect(masterGain);
-  osc.start(t); osc.stop(t + duration + 0.01);
-}
-
-function playNoise(duration, freq, gain, type) {
-  if (!audioReady) return;
-  const t = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  const flt = audioCtx.createBiquadFilter();
-  osc.type = type || "sawtooth";
-  osc.frequency.setValueAtTime(freq, t);
-  flt.type = "lowpass"; flt.frequency.setValueAtTime(freq * 3, t);
-  flt.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.5), t + duration);
-  g.gain.setValueAtTime(gain, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  osc.connect(flt); flt.connect(g); g.connect(masterGain);
-  osc.start(t); osc.stop(t + duration + 0.01);
-}
-
-function playWhiteNoise(duration, gain) {
-  if (!audioReady) return;
-  const t = audioCtx.currentTime;
-  const len = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
-  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const src = audioCtx.createBufferSource(); src.buffer = buf;
-  const g = audioCtx.createGain();
-  const flt = audioCtx.createBiquadFilter();
-  flt.type = "bandpass"; flt.frequency.value = 3000; flt.Q.value = 0.5;
-  g.gain.setValueAtTime(gain, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  src.connect(flt); flt.connect(g); g.connect(masterGain);
-  src.start(t); src.stop(t + duration + 0.01);
-}
-
-const SFX = {
-  _lastHit: 0, _lastDeath: 0, _lastFire: 0,
-  towerFire: {
-    fire()   { if (!SFX._throttle("_lastFire", 60)) return; playNoise(0.07, 900, 0.12, "sawtooth"); playWhiteNoise(0.05, 0.06); },
-    ice()    { if (!SFX._throttle("_lastFire", 80)) return; playTone(1200, 0.12, 0.08, "sine"); playTone(1800, 0.1, 0.04, "sine"); },
-    earth()  { if (!SFX._throttle("_lastFire", 100)) return; playNoise(0.1, 120, 0.15, "square"); playTone(80, 0.12, 0.1, "sine"); },
-    arcane() { if (!SFX._throttle("_lastFire", 80)) return; playTone(600, 0.15, 0.06, "triangle"); playTone(900, 0.13, 0.04, "sine", 50); },
-  },
-  _throttle(key, minMs) { const now = performance.now(); if (now - SFX[key] < minMs) return false; SFX[key] = now; return true; },
-  hit() { if (!SFX._throttle("_lastHit", 30)) return; playWhiteNoise(0.03, 0.06); playTone(400, 0.05, 0.06, "square"); },
-  enemyDeath() { if (!SFX._throttle("_lastDeath", 50)) return; playTone(300, 0.12, 0.1, "sawtooth"); playTone(150, 0.2, 0.08, "sine"); playWhiteNoise(0.1, 0.05); },
-  enemyLeak() { playTone(200, 0.25, 0.12, "sine"); playTone(100, 0.35, 0.08, "sine"); },
-  towerPlace() { playTone(150, 0.1, 0.12, "square"); playWhiteNoise(0.06, 0.08); },
-  towerUpgrade() { playTone(400, 0.12, 0.08, "sine"); setTimeout(() => playTone(600, 0.12, 0.08, "sine"), 80); setTimeout(() => playTone(800, 0.18, 0.1, "sine"), 160); },
-  towerSell() { playTone(800, 0.06, 0.06, "sine"); playTone(600, 0.08, 0.05, "sine"); },
-  waveStart() { playTone(220, 0.25, 0.1, "sawtooth"); playTone(330, 0.2, 0.08, "sawtooth"); setTimeout(() => { playTone(440, 0.35, 0.12, "sawtooth"); playTone(550, 0.3, 0.06, "sine"); }, 150); },
-  gameOver() { playTone(120, 0.8, 0.15, "sawtooth"); playTone(80, 1.0, 0.12, "sine"); setTimeout(() => playTone(60, 1.2, 0.1, "sine"), 300); },
-  victory() { playTone(440, 0.25, 0.1, "sine"); setTimeout(() => playTone(550, 0.25, 0.1, "sine"), 120); setTimeout(() => playTone(660, 0.25, 0.1, "sine"), 240); setTimeout(() => { playTone(880, 0.5, 0.12, "sine"); playTone(660, 0.4, 0.06, "triangle"); }, 360); },
-  uiClick() { playTone(700, 0.03, 0.04, "sine"); },
-};
-
-function gridToWorld(col, row) {
-  return new THREE.Vector3(col * TILE - W / 2 + TILE / 2, 0, row * TILE - H / 2 + TILE / 2);
-}
-/* Cache path points — allocated once, never changes */
-const cachedPathPoints = PATH_POINTS.map(([c, r]) => gridToWorld(c, r));
-function pathWorldPoints() { return cachedPathPoints; }
-
-/* Pre-compute path tile set for O(1) lookup */
-const pathTileSet = new Set();
-(function() {
-  for (let i = 0; i < PATH_POINTS.length - 1; i++) {
-    const [c1, r1] = PATH_POINTS[i], [c2, r2] = PATH_POINTS[i + 1];
-    if (c1 === c2) { const a = Math.min(r1, r2), b = Math.max(r1, r2); for (let r = a; r <= b; r++) pathTileSet.add(c1 + "," + r); }
-    else { const a = Math.min(c1, c2), b = Math.max(c1, c2); for (let c = a; c <= b; c++) pathTileSet.add(c + "," + r1); }
-  }
-})();
-function isPathTile(col, row) { return pathTileSet.has(col + "," + row); }
-
-/* Reusable Vector3 temporaries for hot-path calculations */
-const _tmpVec3A = new THREE.Vector3();
-const _tmpVec3B = new THREE.Vector3();
-
-/* ─── GLOW TEXTURE ─── */
-function glowTex() {
-  const c = document.createElement("canvas"); c.width = 64; c.height = 64;
-  const ctx = c.getContext("2d");
-  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.4, "rgba(255,255,255,0.4)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
-  const t = new THREE.CanvasTexture(c); return t;
-}
-
-/* ─── TEXTURE GENERATORS ─── */
-function createCanvasTex(w, h, fn) {
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
-  fn(c.getContext("2d"), w, h);
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
-}
-function floorTex() {
-  return createCanvasTex(512, 512, (ctx, w, h) => {
-    ctx.fillStyle = "#2a2520"; ctx.fillRect(0,0,w,h);
-    const ts = 64;
-    for (let x = 0; x < w; x += ts) for (let y = 0; y < h; y += ts) {
-      const v = Math.random()*15-7;
-      ctx.fillStyle = `rgb(${42+v},${37+v},${32+v})`; ctx.fillRect(x+1,y+1,ts-2,ts-2);
-    }
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillStyle = `rgba(${30+Math.random()*30},${25+Math.random()*25},${20+Math.random()*20},0.4)`;
-      ctx.fillRect(Math.random()*w, Math.random()*h, Math.random()*3+1, Math.random()*3+1);
-    }
-  });
-}
-function pathTex() {
-  return createCanvasTex(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = "#1e1a15"; ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2000; i++) {
-      const v = Math.random() * 20 - 10;
-      ctx.fillStyle = `rgba(${25+v},${22+v},${18+v},0.5)`;
-      ctx.fillRect(Math.random()*w, Math.random()*h, Math.random()*4+1, Math.random()*4+1);
-    }
-    ctx.strokeStyle = "rgba(100,80,40,0.08)"; ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 32) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
-    for (let y = 0; y < h; y += 32) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-  });
-}
-
-/* ─── DETECT MOBILE ─── */
-function isMobile() {
-  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
-}
+import { TILE, COLS, ROWS, W, H, TOWER_TYPES, SELL_REFUND, PATH_POINTS, WAVES, ENEMY_VISUALS } from "./constants.js";
+import { initAudio, resumeAudio, SFX } from "./audio.js";
+import { glowTex, floorTex, pathTex } from "./textures.js";
+import { gridToWorld, pathWorldPoints, isPathTile, tmpVec3A, tmpVec3B, isMobile, $ } from "./utils.js";
+import {
+  getWaveInfo, getWavePreview, showToast, updateGold, updateLives, updateWaveUI,
+  showGameOver, showVictory, enterEndless, startWave, buildTowerBar, selectTower,
+  showTowerPopup, hideTowerPopup, upgradeTower, sellTower,
+  speed, autoWave, paused, muted, setSpeed, setAutoWave, setPaused, setMuted,
+  updatePauseBtn, updateAutoBtn, updateSpeedBtn, updateMuteBtn,
+  getSelectedTower, clearSelectedTower
+} from "./ui.js";
 
 const mobile = isMobile();
-
-/* ─── UI STATE ─── */
-let speed = 1;
-let autoWave = true;
-let paused = false;
-let muted = false;
-let toastTimer = null;
 let state = null;
-let selectedTowerObj = null;
-
-/* ─── DOM HELPERS ─── */
-const $ = (id) => document.getElementById(id);
-
-function showToast(text, ms = 2800) {
-  const el = $("toast");
-  el.textContent = text;
-  el.style.display = "";
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.display = "none"; }, ms);
-}
-
-function updateGold() {
-  $("gold-display").textContent = "\u2B25 " + state.gold;
-  document.querySelectorAll(".tower-btn").forEach(btn => {
-    const info = TOWER_TYPES[btn.dataset.type];
-    btn.style.opacity = state.gold >= info.cost ? "1" : (mobile ? "0.35" : "0.5");
-  });
-  if (selectedTowerObj) {
-    const t = selectedTowerObj;
-    const maxLvl = 1 + t.info.upgrades.length;
-    if (t.level < maxLvl) $("tp-upgrade").disabled = state.gold < t.info.upgrades[t.level - 1].cost;
-  }
-}
-
-function updateLives() {
-  const el = $("lives-display");
-  el.textContent = "\u2665 " + state.lives;
-  el.style.color = state.lives <= 5 ? "#ff4444" : "#ff8866";
-}
-
-function updateWaveUI() {
-  const el = $("wave-info");
-  const hudCenter = $("hud-center");
-
-  if (state.gameOver) { hudCenter.style.display = "none"; return; }
-  if (state.victory && !state.endless) { hudCenter.style.display = "none"; return; }
-  hudCenter.style.display = "";
-
-  const isEndless = state.endless || state.wave > WAVES.length;
-  const prefix = isEndless ? "\u221E " : "";
-
-  if (state.waveActive) {
-    const cur = getWavePreview(state.wave);
-    el.textContent = prefix + "Wave " + state.wave + " \u2014 " + cur.name;
-    el.style.cursor = "default"; el.style.opacity = "0.8";
-  } else {
-    const nextNum = state.wave + 1;
-    if (!state.endless && state.wave >= WAVES.length) {
-      el.textContent = "All waves complete"; el.style.cursor = "default"; el.style.opacity = "0.8";
-    } else {
-      const next = getWavePreview(nextNum);
-      el.textContent = "\u25B6 " + prefix + "Wave " + nextNum + " \u2014 " + next.name;
-      el.style.cursor = "pointer"; el.style.opacity = "1";
-    }
-  }
-}
-
-function updatePauseBtn() {
-  const btn = $("pause-btn");
-  btn.textContent = paused ? "\u25B6" : "\u23F8";
-  btn.style.background = paused ? "rgba(255,100,100,0.25)" : "rgba(138,126,96,0.1)";
-  btn.style.borderColor = paused ? "rgba(255,100,100,0.5)" : "rgba(138,126,96,0.25)";
-  btn.style.color = paused ? "#ff8866" : "#8a7e60";
-}
-
-function updateAutoBtn() {
-  const btn = $("auto-btn");
-  btn.textContent = autoWave ? "AUTO" : "MANUAL";
-  btn.style.background = autoWave ? "rgba(100,180,100,0.2)" : "rgba(138,126,96,0.15)";
-  btn.style.borderColor = autoWave ? "rgba(100,200,100,0.5)" : "rgba(138,126,96,0.3)";
-  btn.style.color = autoWave ? "#88cc88" : "#8a7e60";
-}
-
-function updateSpeedBtn() {
-  const btn = $("speed-btn");
-  btn.textContent = speed + "x";
-  btn.style.background = speed > 1 ? "rgba(255,204,68,0.25)" : "rgba(138,126,96,0.1)";
-  btn.style.borderColor = speed > 1 ? "rgba(255,204,68,0.6)" : "rgba(138,126,96,0.25)";
-  btn.style.color = speed > 1 ? "#ffcc44" : "#8a7e60";
-}
-
-function updateMuteBtn() {
-  const btn = $("mute-btn");
-  btn.textContent = muted ? "\u{1F507}" : "\u{1F50A}";
-  btn.style.background = muted ? "rgba(200,100,100,0.2)" : "rgba(138,126,96,0.1)";
-  btn.style.borderColor = muted ? "rgba(200,100,100,0.4)" : "rgba(138,126,96,0.25)";
-  btn.style.color = muted ? "#dd8888" : "#8a7e60";
-  if (masterGain) masterGain.gain.value = muted ? 0 : 0.4;
-}
-
-function selectTower(type) {
-  if (state) state.selectedTower = type;
-  if (selectedTowerObj) hideTowerPopup(null);
-  document.querySelectorAll(".tower-btn").forEach(btn => {
-    const sel = btn.dataset.type === type;
-    if (mobile) {
-      btn.style.background = sel ? "rgba(138,126,96,0.45)" : "rgba(10,9,8,0.85)";
-      btn.style.border = sel ? "2px solid rgba(212,200,160,0.8)" : "1px solid rgba(138,126,96,0.3)";
-    } else {
-      btn.style.background = sel ? "rgba(138,126,96,0.35)" : "rgba(10,9,8,0.85)";
-      btn.style.border = sel ? "1px solid rgba(212,200,160,0.6)" : "1px solid rgba(138,126,96,0.3)";
-    }
-  });
-}
-
-function showGameOver() {
-  $("game-over").style.display = "";
-  if (state.endless) {
-    $("game-over-wave").textContent = "Endless Wave " + state.wave + " reached \u2014 " + state.towers.length + " towers built";
-  } else {
-    $("game-over-wave").textContent = "The temple has been lost. Wave " + state.wave + ".";
-  }
-  updateWaveUI();
-  SFX.gameOver();
-}
-
-function showVictory() {
-  if (state.endless) return; /* endless mode ends on game over, never victory */
-  $("victory-screen").style.display = "";
-  $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
-  $("endless-btn").style.display = "";
-  updateWaveUI();
-  SFX.victory();
-}
-
-function enterEndless() {
-  $("victory-screen").style.display = "none";
-  state.victory = false;
-  state.endless = true;
-  state.lives = Math.max(state.lives, 10); /* restore at least 10 lives */
-  state.gold += 100; /* bonus gold for entering endless */
-  updateGold(); updateLives(); updateWaveUI();
-  showToast("\u{1F300} Endless Mode \u2014 +100g +10\u2665", 3500);
-  if (autoWave) {
-    setTimeout(() => { if (!state.gameOver) startWave(); }, 2000);
-  }
-}
-
-function startWave() {
-  if (!state || state.waveActive || state.gameOver) return;
-  if (state.victory && !state.endless) return;
-  /* Campaign: capped at WAVES.length. Endless: unlimited. */
-  if (!state.endless && state.wave >= WAVES.length) return;
-  state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5; state.currentWaveInfo = null;
-  updateWaveUI();
-  SFX.waveStart();
-}
-
-/* ─── TOWER POPUP ─── */
-function showTowerPopup(tower, rangeCircle) {
-  selectedTowerObj = tower;
-  const popup = $("tower-popup");
-  const info = tower.info;
-  const lvl = tower.level;
-  const maxLvl = 1 + info.upgrades.length;
-  const isMax = lvl >= maxLvl;
-  const nextUpgrade = !isMax ? info.upgrades[lvl - 1] : null;
-  const colorHex = "#" + info.color.toString(16).padStart(6, "0");
-
-  $("tp-icon").textContent = info.icon;
-  $("tp-name").innerHTML = '<span style="color:' + colorHex + '">' + info.name + '</span>';
-  $("tp-level").textContent = isMax ? "" : "Lv " + lvl;
-
-  let statsHtml = "";
-  if (isMax) {
-    statsHtml += '<div class="tp-max">\u2605 MAX \u2605</div>';
-  }
-  statsHtml += "Dmg: <strong>" + tower.damage + "</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.damage + '</span>';
-  statsHtml += " &middot; " + (tower.damage / tower.rate).toFixed(1) + " dps";
-  statsHtml += "<br>Rate: <strong>" + tower.rate.toFixed(2) + "s</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.rate.toFixed(2) + 's</span>';
-  statsHtml += "<br>Range: <strong>" + tower.range.toFixed(1) + "</strong>";
-  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192' + nextUpgrade.range.toFixed(1) + '</span>';
-  $("tp-stats").innerHTML = statsHtml;
-
-  const upBtn = $("tp-upgrade");
-  if (isMax) {
-    upBtn.style.display = "none";
-  } else {
-    upBtn.textContent = "\u2692 " + nextUpgrade.cost + "g";
-    upBtn.disabled = state.gold < nextUpgrade.cost;
-    upBtn.style.display = "";
-  }
-  $("tp-sell").textContent = "\u2716 " + Math.floor(tower.totalInvested * SELL_REFUND) + "g";
-  popup.style.display = ""; popup.style.left = "50%"; popup.style.bottom = mobile ? "90px" : "130px"; popup.style.top = "auto"; popup.style.transform = "translateX(-50%)";
-  if (rangeCircle) {
-    const pos = tower.group.position;
-    rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
-    setRangeCircleRange(tower.range);
-    rangeCircle.visible = true;
-  }
-}
-
-function hideTowerPopup(rangeCircle) {
-  $("tower-popup").style.display = "none";
-  selectedTowerObj = null;
-  if (rangeCircle) rangeCircle.visible = false;
-}
-
-function upgradeTower(rangeCircle) {
-  if (!selectedTowerObj || !state) return;
-  const tower = selectedTowerObj, info = tower.info, lvl = tower.level;
-  if (lvl >= 1 + info.upgrades.length) return;
-  const upgrade = info.upgrades[lvl - 1];
-  if (state.gold < upgrade.cost) { showToast("Not enough gold!"); return; }
-  state.gold -= upgrade.cost; tower.totalInvested += upgrade.cost; tower.level = lvl + 1;
-  tower.damage = upgrade.damage; tower.rate = upgrade.rate; tower.range = upgrade.range;
-  const lvlUp = tower.level - 1;
-  /* Body: wider, taller, brighter */
-  tower.body.scale.set(1.0 + lvlUp * 0.15, 1.0 + lvlUp * 0.25, 1.0 + lvlUp * 0.15);
-  tower.body.position.y = 1.1 + lvlUp * 0.2;
-  tower.body.material.emissiveIntensity = 0.8 + lvlUp * 0.8;
-  tower.body.material.metalness = 0.6 + lvlUp * 0.15;
-  /* Orb: much bigger, brighter */
-  tower.orb.scale.setScalar(1.0 + lvlUp * 0.5);
-  tower.orb.material.emissiveIntensity = 2.0 + lvlUp * 2.0;
-  /* Glow: significantly larger */
-  tower.glow.scale.set(1.0 + lvlUp * 0.7, 1.0 + lvlUp * 0.7, 1);
-  tower.glow.material.opacity = 0.3 + lvlUp * 0.15;
-  /* Reposition orb/glow higher */
-  const orbBaseY = 2.2 + lvlUp * 0.35;
-  tower.orbBaseY = orbBaseY; tower.orb.position.y = orbBaseY; tower.glow.position.y = orbBaseY;
-  /* Light: brighter, wider reach */
-  if (tower.light) { tower.light.position.y = orbBaseY; tower.light.intensity = 30 + lvlUp * 30; tower.light.distance = 10 + lvlUp * 4; }
-  updateGold(); SFX.towerUpgrade();
-  showToast(info.name + " \u2192 Lv " + tower.level + "!");
-  showTowerPopup(tower, rangeCircle);
-}
-
-function sellTower(rangeCircle) {
-  if (!selectedTowerObj || !state) return;
-  const tower = selectedTowerObj;
-  const sellValue = Math.floor(tower.totalInvested * SELL_REFUND);
-  state.gold += sellValue;
-  if (tower.group.parent) tower.group.parent.remove(tower.group);
-  if (tower.light) { tower.light.intensity = 0; tower.light.position.set(0, -100, 0); }
-  const idx = state.towers.indexOf(tower);
-  if (idx !== -1) state.towers.splice(idx, 1);
-  state.towerMeshMap.delete(tower.col + "," + tower.row);
-  updateGold(); SFX.towerSell(); hideTowerPopup(rangeCircle);
-  showToast("Sold for " + sellValue + "g");
-}
-
-/* ─── BUILD TOWER BAR ─── */
-function buildTowerBar() {
-  const bar = $("tower-bar");
-  Object.entries(TOWER_TYPES).forEach(([key, info]) => {
-    const btn = document.createElement("button");
-    btn.className = "tower-btn";
-    btn.dataset.type = key;
-    const colorHex = "#" + info.color.toString(16).padStart(6, "0");
-
-    if (mobile) {
-      btn.style.cssText = "width:70px;padding:8px 4px;cursor:pointer;background:rgba(10,9,8,0.92);border:1px solid rgba(138,126,96,0.3);border-radius:6px;color:#d4c8a0;font-family:'Georgia',serif;text-align:center;transition:all 0.15s;-webkit-tap-highlight-color:transparent;pointer-events:auto;";
-      btn.innerHTML =
-        '<div style="font-size:26px;line-height:1">' + info.icon + '</div>' +
-        '<div style="font-size:12px;margin-top:4px;color:' + colorHex + ';font-weight:bold">' + info.name + '</div>' +
-        '<div style="font-size:13px;color:#ffcc44;margin-top:3px;font-weight:bold">' + info.cost + 'g</div>';
-    } else {
-      btn.style.cssText = "padding:8px 14px;cursor:pointer;background:rgba(10,9,8,0.92);border:1px solid rgba(138,126,96,0.3);border-radius:6px;color:#d4c8a0;font-family:'Georgia',serif;transition:all 0.2s;min-width:100px;text-align:center;pointer-events:auto;";
-      btn.innerHTML =
-        '<div style="font-size:20px;line-height:1">' + info.icon + '</div>' +
-        '<div style="font-size:13px;color:' + colorHex + ';font-weight:bold;margin-top:3px">' + info.name + '</div>' +
-        '<div style="font-size:9px;opacity:0.5;margin-top:1px">' + info.desc + '</div>' +
-        '<div style="font-size:12px;color:#ffcc44;margin-top:3px">' + info.cost + 'g</div>';
-    }
-
-    btn.addEventListener("click", () => selectTower(key));
-    bar.appendChild(btn);
-  });
-}
 
 /* ─── INIT 3D GAME ─── */
 function init() {
@@ -860,8 +196,8 @@ function init() {
   tpEl.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: false });
   tpEl.addEventListener("touchend", (e) => e.stopPropagation(), { passive: false });
   tpEl.addEventListener("mousedown", (e) => e.stopPropagation());
-  $("tp-upgrade").addEventListener("click", (e) => { e.stopPropagation(); upgradeTower(rangeCircle); });
-  $("tp-sell").addEventListener("click", (e) => { e.stopPropagation(); sellTower(rangeCircle); });
+  $("tp-upgrade").addEventListener("click", (e) => { e.stopPropagation(); upgradeTower(rangeCircle, setRangeCircleRange, state); });
+  $("tp-sell").addEventListener("click", (e) => { e.stopPropagation(); sellTower(rangeCircle, state, scene); });
   $("tp-close").addEventListener("click", (e) => { e.stopPropagation(); hideTowerPopup(rangeCircle); });
 
   /* ─── GAME STATE ─── */
@@ -874,13 +210,13 @@ function init() {
   };
 
   /* Select the default tower visually */
-  selectTower("fire");
-  updateGold();
-  updateWaveUI();
+  selectTower(state, "fire");
+  updateGold(state);
+  updateWaveUI(state);
 
   /* Auto-start wave 1 if auto mode is on */
   if (autoWave) {
-    setTimeout(() => { if (!state.gameOver && !state.victory) startWave(); }, 1500);
+    setTimeout(() => { if (!state.gameOver && !state.victory) startWave(state); }, 1500);
   }
 
   /* ─── PRE-BUILT GEOMETRIES & MATERIALS ─── */
@@ -1136,8 +472,8 @@ function init() {
       spawnLeakVFX(enemy.group.position.x, enemy.group.position.y, enemy.group.position.z);
       SFX.enemyLeak();
       enemy.alive = false; scene.remove(enemy.group); state.enemiesAlive--;
-      state.lives = Math.max(0, state.lives - 1); updateLives();
-      if (state.lives <= 0 && !state.gameOver) { state.gameOver = true; showGameOver(); }
+      state.lives = Math.max(0, state.lives - 1); updateLives(state);
+      if (state.lives <= 0 && !state.gameOver) { state.gameOver = true; showGameOver(state); }
       return;
     }
     const from = pts[enemy.pathIndex], to = pts[enemy.pathIndex + 1];
@@ -1150,8 +486,8 @@ function init() {
       const a = pts[enemy.pathIndex], b = pts[enemy.pathIndex + 1];
       enemy.group.position.x = a.x + (b.x - a.x) * enemy.pathProgress;
       enemy.group.position.z = a.z + (b.z - a.z) * enemy.pathProgress;
-      _tmpVec3A.subVectors(b, a).normalize();
-      enemy.group.lookAt(enemy.group.position.x + _tmpVec3A.x, 0.4, enemy.group.position.z + _tmpVec3A.z);
+      tmpVec3A.subVectors(b, a).normalize();
+      enemy.group.lookAt(enemy.group.position.x + tmpVec3A.x, 0.4, enemy.group.position.z + tmpVec3A.z);
     }
   }
 
@@ -1181,21 +517,21 @@ function init() {
     const { col, row } = cell;
     const existing = state.towerMeshMap.get(col + "," + row);
     if (existing) {
-      if (selectedTowerObj === existing) hideTowerPopup(rangeCircle);
-      else showTowerPopup(existing, rangeCircle);
+      if (getSelectedTower() === existing) hideTowerPopup(rangeCircle);
+      else showTowerPopup(existing, rangeCircle, setRangeCircleRange, state);
       return;
     }
-    if (selectedTowerObj) hideTowerPopup(rangeCircle);
+    if (getSelectedTower()) hideTowerPopup(rangeCircle);
     if (isPathTile(col, row)) { showToast("Can't build on the path"); return; }
     const info = TOWER_TYPES[state.selectedTower];
     if (state.gold < info.cost) { showToast("Not enough gold!"); return; }
-    state.gold -= info.cost; updateGold();
+    state.gold -= info.cost; updateGold(state);
     createTower(col, row, state.selectedTower);
     SFX.towerPlace();
   }
 
   function showHover(clientX, clientY) {
-    if (selectedTowerObj) return;
+    if (getSelectedTower()) return;
     const cell = getGridFromXY(clientX, clientY);
     if (!cell) { hoverRing.visible = false; rangeCircle.visible = false; return; }
     const existing = state.towerMeshMap.get(cell.col + "," + cell.row);
@@ -1556,16 +892,16 @@ function init() {
           }
         }
         if (state.spawned >= (waveInfo?.enemies || 0) && state.enemiesAlive <= 0) {
-          state.waveActive = false; state.currentWaveInfo = null; updateWaveUI();
+          state.waveActive = false; state.currentWaveInfo = null; updateWaveUI(state);
           if (!state.endless && state.wave >= WAVES.length) {
-            state.victory = true; showVictory();
+            state.victory = true; showVictory(state);
           } else {
             const next = getWavePreview(state.wave + 1);
             showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
             if (autoWave) {
               setTimeout(() => {
                 if (state.gameOver || (state.victory && !state.endless)) return;
-                startWave();
+                startWave(state);
               }, 2000);
             }
           }
@@ -1650,12 +986,12 @@ function init() {
 
       state.towers.forEach(t => {
         t.cooldown -= dt; if (t.cooldown > 0) return;
-        _tmpVec3A.set(t.group.position.x, 0, t.group.position.z);
+        tmpVec3A.set(t.group.position.x, 0, t.group.position.z);
         let closest = null, closestDist = t.range;
         state.enemies.forEach(e => {
           if (!e.alive) return;
-          _tmpVec3B.set(e.group.position.x, 0, e.group.position.z);
-          const d = _tmpVec3A.distanceTo(_tmpVec3B);
+          tmpVec3B.set(e.group.position.x, 0, e.group.position.z);
+          const d = tmpVec3A.distanceTo(tmpVec3B);
           if (d < closestDist) { closestDist = d; closest = e; }
         });
         if (closest) { fireProjectile(t, closest); t.cooldown = t.rate; }
@@ -1664,22 +1000,22 @@ function init() {
       for (let i = state.projectiles.length - 1; i >= 0; i--) {
         const p = state.projectiles[i];
         if (!p.target.alive) { scene.remove(p.mesh); state.projectiles.splice(i, 1); continue; }
-        _tmpVec3A.subVectors(p.target.group.position, p.mesh.position);
-        if (_tmpVec3A.length() < 0.3) {
+        tmpVec3A.subVectors(p.target.group.position, p.mesh.position);
+        if (tmpVec3A.length() < 0.3) {
           p.target.hp -= p.damage;
           if (p.type === "ice") p.target.slowTimer = 2.0;
           if (p.type === "arcane") {
             let cc = 0;
-            _tmpVec3B.copy(p.target.group.position);
+            tmpVec3B.copy(p.target.group.position);
             state.enemies.forEach(e => {
               if (!e.alive || e === p.target || cc >= 2) return;
-              if (e.group.position.distanceTo(_tmpVec3B) < 2.5) {
+              if (e.group.position.distanceTo(tmpVec3B) < 2.5) {
                 e.hp -= p.damage * 0.5; flashEnemyDamage(e); cc++;
                 if (e.hp <= 0 && e.alive) {
                   spawnDeathVFX(e.group.position.x, e.group.position.y, e.group.position.z, e.type);
                   SFX.enemyDeath();
                   e.alive = false; scene.remove(e.group); state.enemiesAlive--;
-                  state.gold += e.reward; updateGold();
+                  state.gold += e.reward; updateGold(state);
                 }
               }
             });
@@ -1701,10 +1037,10 @@ function init() {
             spawnDeathVFX(hp.x, hp.y, hp.z, p.target.type);
             SFX.enemyDeath();
             p.target.alive = false; scene.remove(p.target.group); state.enemiesAlive--;
-            state.gold += p.target.reward; updateGold();
+            state.gold += p.target.reward; updateGold(state);
           }
           scene.remove(p.mesh); state.projectiles.splice(i, 1);
-        } else { _tmpVec3A.normalize(); p.mesh.position.addScaledVector(_tmpVec3A, p.speed * dt); }
+        } else { tmpVec3A.normalize(); p.mesh.position.addScaledVector(tmpVec3A, p.speed * dt); }
       }
 
       /* Clean up dead enemies */
@@ -1736,10 +1072,10 @@ updatePauseBtn();
 updateMuteBtn();
 
 $("start-btn").addEventListener("click", init);
-$("wave-info").addEventListener("click", () => { resumeAudio(); startWave(); });
+$("wave-info").addEventListener("click", () => { resumeAudio(); if (state) startWave(state); });
 $("auto-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); autoWave = !autoWave; updateAutoBtn(); });
 $("speed-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); speed = speed >= 3 ? 1 : speed + 1; updateSpeedBtn(); });
 $("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); paused = !paused; updatePauseBtn(); });
 $("mute-btn").addEventListener("click", () => { muted = !muted; updateMuteBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
-$("endless-btn").addEventListener("click", () => { resumeAudio(); enterEndless(); });
+$("endless-btn").addEventListener("click", () => { resumeAudio(); if (state) enterEndless(state); });
