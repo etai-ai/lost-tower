@@ -1421,7 +1421,8 @@ function init() {
             state.victory = true; showVictory();
           } else {
             const next = getWaveInfo(state.wave + 1);
-            showToast("Next: " + next.enemies + "\u00D7 " + next.name, 3500);
+            const desc = next.groups.map(g => g.count + "\u00D7 " + (g.type.charAt(0).toUpperCase() + g.type.slice(1))).join(", ");
+            showToast("Next: " + desc, 3500);
             if (autoWave) {
               setTimeout(() => {
                 if (state.gameOver || (state.victory && !state.endless)) return;
@@ -1600,5 +1601,4 @@ $("speed-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); s
 $("pause-btn").addEventListener("click", () => { resumeAudio(); SFX.uiClick(); paused = !paused; updatePauseBtn(); });
 $("mute-btn").addEventListener("click", () => { muted = !muted; updateMuteBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
-$("replay-btn").addEventListener("click", () => window.location.reload());
 $("endless-btn").addEventListener("click", () => { resumeAudio(); enterEndless(); });
