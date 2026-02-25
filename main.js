@@ -6,11 +6,28 @@ const COLS = 20, ROWS = 14;
 const W = COLS * TILE, H = ROWS * TILE;
 
 const TOWER_TYPES = {
-  fire:   { cost: 30, range: 3.5, damage: 12, rate: 0.9,  color: 0xff6644, emissive: 0xff4422, name: "Fire",   icon: "\u{1F525}", desc: "Fast, moderate dmg" },
-  ice:    { cost: 40, range: 4.0, damage: 8,  rate: 1.2,  color: 0x44aaff, emissive: 0x2288dd, name: "Frost",  icon: "\u2744\uFE0F", desc: "Slows enemies 40%" },
-  earth:  { cost: 50, range: 3.0, damage: 25, rate: 1.8,  color: 0x66ff88, emissive: 0x44cc66, name: "Earth",  icon: "\u{1FAA8}", desc: "Heavy dmg, slow" },
-  arcane: { cost: 70, range: 5.0, damage: 18, rate: 1.0,  color: 0xffcc44, emissive: 0xddaa22, name: "Arcane", icon: "\u2728", desc: "Long range, chains" },
+  fire:   { cost: 30, range: 3.5, damage: 12, rate: 0.9,  color: 0xff6644, emissive: 0xff4422, name: "Fire",   icon: "\u{1F525}", desc: "Fast, moderate dmg",
+    upgrades: [
+      { cost: 40,  damage: 18, rate: 0.85, range: 3.8 },
+      { cost: 70,  damage: 28, rate: 0.75, range: 4.2 },
+    ]},
+  ice:    { cost: 40, range: 4.0, damage: 8,  rate: 1.2,  color: 0x44aaff, emissive: 0x2288dd, name: "Frost",  icon: "\u2744\uFE0F", desc: "Slows enemies 40%",
+    upgrades: [
+      { cost: 50,  damage: 12, rate: 1.1,  range: 4.5 },
+      { cost: 85,  damage: 18, rate: 1.0,  range: 5.0 },
+    ]},
+  earth:  { cost: 50, range: 3.0, damage: 25, rate: 1.8,  color: 0x66ff88, emissive: 0x44cc66, name: "Earth",  icon: "\u{1FAA8}", desc: "Heavy dmg, slow",
+    upgrades: [
+      { cost: 60,  damage: 40, rate: 1.6,  range: 3.3 },
+      { cost: 100, damage: 65, rate: 1.4,  range: 3.6 },
+    ]},
+  arcane: { cost: 70, range: 5.0, damage: 18, rate: 1.0,  color: 0xffcc44, emissive: 0xddaa22, name: "Arcane", icon: "\u2728", desc: "Long range, chains",
+    upgrades: [
+      { cost: 80,  damage: 28, rate: 0.9,  range: 5.5 },
+      { cost: 130, damage: 42, rate: 0.8,  range: 6.0 },
+    ]},
 };
+const SELL_REFUND = 0.65;
 
 const PATH_POINTS = [
   [0,1],  [4,1],  [4,4],  [1,4],  [1,7],
@@ -173,6 +190,8 @@ let autoWave = true;
 let paused = false;
 let toastTimer = null;
 let state = null;
+let selectedTowerObj = null;  /* tower currently shown in popup */
+let _sceneRef = null;         /* scene reference for sell */
 
 /* ─── DOM HELPERS ─── */
 const $ = (id) => document.getElementById(id);
@@ -191,6 +210,14 @@ function updateGold() {
     const info = TOWER_TYPES[btn.dataset.type];
     btn.style.opacity = state.gold >= info.cost ? "1" : (mobile ? "0.35" : "0.5");
   });
+  /* Refresh popup upgrade affordability if open */
+  if (selectedTowerObj) {
+    const t = selectedTowerObj;
+    const maxLvl = 1 + t.info.upgrades.length;
+    if (t.level < maxLvl) {
+      $("tp-upgrade").disabled = state.gold < t.info.upgrades[t.level - 1].cost;
+    }
+  }
 }
 
 function updateLives() {
@@ -215,7 +242,8 @@ function updateWaveUI() {
     el.style.cursor = "default";
     el.style.opacity = "0.8";
   } else if (state.wave < WAVES.length) {
-    el.textContent = "\u25B6 Wave " + (state.wave + 1);
+    const next = WAVES[state.wave];
+    el.textContent = "\u25B6 Wave " + (state.wave + 1) + " \u2014 " + next.name;
     el.style.cursor = "pointer";
     el.style.opacity = "1";
   } else {
@@ -254,7 +282,8 @@ function updateSpeedBtn() {
 }
 
 function selectTower(type) {
-  state.selectedTower = type;
+  if (state) state.selectedTower = type;
+  if (selectedTowerObj) hideTowerPopup(null);
   document.querySelectorAll(".tower-btn").forEach(btn => {
     const sel = btn.dataset.type === type;
     if (mobile) {
@@ -285,6 +314,135 @@ function startWave() {
   state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
   const w = WAVES[state.wave - 1];
   updateWaveUI();
+}
+
+/* ─── TOWER POPUP ─── */
+function showTowerPopup(tower, rangeCircle) {
+  selectedTowerObj = tower;
+  const popup = $("tower-popup");
+  const info = tower.info;
+  const lvl = tower.level;
+  const maxLvl = 1 + info.upgrades.length;
+  const canUpgrade = lvl < maxLvl;
+  const nextUpgrade = canUpgrade ? info.upgrades[lvl - 1] : null;
+  const colorHex = "#" + info.color.toString(16).padStart(6, "0");
+
+  $("tp-icon").textContent = info.icon;
+  $("tp-name").innerHTML = '<span style="color:' + colorHex + '">' + info.name + '</span>';
+  $("tp-level").textContent = "Lv " + lvl + "/" + maxLvl;
+
+  const curDps = (tower.damage / tower.rate).toFixed(1);
+  let statsHtml = "Damage: <strong>" + tower.damage + "</strong>";
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.damage + '</span>';
+  statsHtml += "<br>Rate: <strong>" + tower.rate.toFixed(2) + "s</strong>";
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.rate.toFixed(2) + 's</span>';
+  statsHtml += "<br>Range: <strong>" + tower.range.toFixed(1) + "</strong>";
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + nextUpgrade.range.toFixed(1) + '</span>';
+  statsHtml += "<br>DPS: <strong>" + curDps + "</strong>";
+  if (nextUpgrade) statsHtml += ' <span class="stat-upgrade">\u2192 ' + (nextUpgrade.damage / nextUpgrade.rate).toFixed(1) + '</span>';
+  statsHtml += "<br><span style='color:#8a7e60;font-size:11px'>Invested: " + tower.totalInvested + "g</span>";
+
+  $("tp-stats").innerHTML = statsHtml;
+
+  const upBtn = $("tp-upgrade");
+  if (canUpgrade) {
+    upBtn.textContent = "\u2B06 Upgrade " + nextUpgrade.cost + "g";
+    upBtn.disabled = state.gold < nextUpgrade.cost;
+    upBtn.style.display = "";
+  } else {
+    upBtn.textContent = "MAX LEVEL";
+    upBtn.disabled = true;
+    upBtn.style.display = "";
+  }
+
+  const sellValue = Math.floor(tower.totalInvested * SELL_REFUND);
+  $("tp-sell").textContent = "\u{1F4B0} Sell " + sellValue + "g";
+
+  popup.style.display = "";
+  popup.style.left = "50%";
+  popup.style.bottom = mobile ? "90px" : "130px";
+  popup.style.top = "auto";
+  popup.style.transform = "translateX(-50%)";
+
+  /* Show range circle on selected tower */
+  if (rangeCircle) {
+    const pos = tower.group.position;
+    rangeCircle.position.x = pos.x;
+    rangeCircle.position.z = pos.z;
+    rangeCircle.geometry.dispose();
+    rangeCircle.geometry = new THREE.RingGeometry(tower.range - 0.05, tower.range, 48);
+    rangeCircle.visible = true;
+  }
+}
+
+function hideTowerPopup(rangeCircle) {
+  $("tower-popup").style.display = "none";
+  selectedTowerObj = null;
+  if (rangeCircle) rangeCircle.visible = false;
+}
+
+function upgradeTower(rangeCircle) {
+  if (!selectedTowerObj || !state) return;
+  const tower = selectedTowerObj;
+  const info = tower.info;
+  const lvl = tower.level;
+  const maxLvl = 1 + info.upgrades.length;
+  if (lvl >= maxLvl) return;
+
+  const upgrade = info.upgrades[lvl - 1];
+  if (state.gold < upgrade.cost) { showToast("Not enough gold!"); return; }
+
+  state.gold -= upgrade.cost;
+  tower.totalInvested += upgrade.cost;
+  tower.level = lvl + 1;
+  tower.damage = upgrade.damage;
+  tower.rate = upgrade.rate;
+  tower.range = upgrade.range;
+
+  /* Visual upgrade — scale orb & glow, increase emissive */
+  const scale = 1.0 + (tower.level - 1) * 0.25;
+  tower.orb.scale.setScalar(scale);
+  tower.glow.scale.set(scale * 1.1, scale * 1.1, 1);
+  tower.orb.material.emissiveIntensity = 2.0 + (tower.level - 1) * 1.2;
+
+  /* Scale tower body slightly taller */
+  tower.body.scale.y = 1.0 + (tower.level - 1) * 0.12;
+  tower.body.position.y = 1.1 + (tower.level - 1) * 0.1;
+  const orbBaseY = 2.2 + (tower.level - 1) * 0.2;
+  tower.orbBaseY = orbBaseY;
+  tower.orb.position.y = orbBaseY;
+  tower.glow.position.y = orbBaseY;
+  if (tower.light) tower.light.position.y = orbBaseY;
+
+  updateGold();
+  showToast(info.name + " \u2192 Lv " + tower.level + "!");
+  showTowerPopup(tower, rangeCircle);
+}
+
+function sellTower(rangeCircle) {
+  if (!selectedTowerObj || !state) return;
+  const tower = selectedTowerObj;
+  const sellValue = Math.floor(tower.totalInvested * SELL_REFUND);
+
+  state.gold += sellValue;
+
+  /* Remove from scene */
+  if (tower.group.parent) tower.group.parent.remove(tower.group);
+
+  /* Return light to pool */
+  if (tower.light) {
+    tower.light.intensity = 0;
+    tower.light.position.set(0, -100, 0);
+  }
+
+  /* Remove from state */
+  const idx = state.towers.indexOf(tower);
+  if (idx !== -1) state.towers.splice(idx, 1);
+  state.towerMeshMap.delete(tower.col + "," + tower.row);
+
+  updateGold();
+  hideTowerPopup(rangeCircle);
+  showToast("Sold for " + sellValue + "g");
 }
 
 /* ─── BUILD TOWER BAR ─── */
@@ -424,6 +582,15 @@ function init() {
   );
   rangeCircle.rotation.x = -Math.PI / 2; rangeCircle.visible = false; rangeCircle.position.y = 0.02; scene.add(rangeCircle);
 
+  /* ─── WIRE POPUP BUTTONS ─── */
+  const tpEl = $("tower-popup");
+  tpEl.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: false });
+  tpEl.addEventListener("touchend", (e) => e.stopPropagation(), { passive: false });
+  tpEl.addEventListener("mousedown", (e) => e.stopPropagation());
+  $("tp-upgrade").addEventListener("click", (e) => { e.stopPropagation(); upgradeTower(rangeCircle); });
+  $("tp-sell").addEventListener("click", (e) => { e.stopPropagation(); sellTower(rangeCircle); });
+  $("tp-close").addEventListener("click", (e) => { e.stopPropagation(); hideTowerPopup(rangeCircle); });
+
   /* ─── GAME STATE ─── */
   state = {
     towers: [], enemies: [], projectiles: [],
@@ -533,10 +700,10 @@ function init() {
     if (type === "ice") body.rotation.y = Math.PI/4;
     body.position.y = 1.1; body.castShadow = !mobile; group.add(body);
 
-    const orb = new THREE.Mesh(towerGeo.orb, towerOrbMat[type]);
+    const orb = new THREE.Mesh(towerGeo.orb, towerOrbMat[type].clone());
     orb.position.y = 2.2; group.add(orb);
 
-    const glow = new THREE.Sprite(towerGlowMat[type]);
+    const glow = new THREE.Sprite(towerGlowMat[type].clone());
     glow.scale.set(1.0, 1.0, 1); glow.position.y = 2.2; group.add(glow);
 
     /* Grab a pre-allocated light from the pool */
@@ -549,7 +716,11 @@ function init() {
     }
     scene.add(group);
 
-    const tower = { group, orb, glow, light, col, row, type, info, cooldown: 0 };
+    const tower = {
+      group, body, orb, glow, light, col, row, type, info, cooldown: 0,
+      level: 1, damage: info.damage, rate: info.rate, range: info.range,
+      totalInvested: info.cost, orbBaseY: 2.2,
+    };
     state.towers.push(tower);
     state.towerMeshMap.set(col + "," + row, tower);
     return tower;
@@ -684,7 +855,7 @@ function init() {
     const mesh = new THREE.Mesh(projGeo, projMat[tower.type]);
     mesh.position.copy(tower.group.position); mesh.position.y = 2.2;
     scene.add(mesh);
-    state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.info.damage, type: tower.type });
+    state.projectiles.push({ mesh, target, tower, speed: 12, damage: tower.damage, type: tower.type });
   }
 
   /* ─── PATH FOLLOWING ─── */
@@ -734,10 +905,24 @@ function init() {
   function tryPlaceTower(clientX, clientY) {
     if (state.gameOver || state.victory) return;
     const cell = getGridFromXY(clientX, clientY);
-    if (!cell) return;
+    if (!cell) { hideTowerPopup(rangeCircle); return; }
     const { col, row } = cell;
+
+    /* Click on existing tower → open upgrade/sell popup */
+    const existing = state.towerMeshMap.get(col + "," + row);
+    if (existing) {
+      if (selectedTowerObj === existing) {
+        hideTowerPopup(rangeCircle);
+      } else {
+        showTowerPopup(existing, rangeCircle);
+      }
+      return;
+    }
+
+    /* Close popup if clicking elsewhere */
+    if (selectedTowerObj) { hideTowerPopup(rangeCircle); }
+
     if (isPathTile(col, row)) { showToast("Can't build on the path"); return; }
-    if (state.towerMeshMap.has(col + "," + row)) { showToast("Tile occupied"); return; }
     const info = TOWER_TYPES[state.selectedTower];
     if (state.gold < info.cost) { showToast("Not enough gold!"); return; }
     state.gold -= info.cost; updateGold();
@@ -745,8 +930,23 @@ function init() {
   }
 
   function showHover(clientX, clientY) {
+    if (selectedTowerObj) return; /* popup open — don't override range circle */
     const cell = getGridFromXY(clientX, clientY);
-    if (!cell || isPathTile(cell.col, cell.row) || state.towerMeshMap.has(cell.col + "," + cell.row)) {
+    if (!cell) { hoverRing.visible = false; rangeCircle.visible = false; return; }
+
+    /* Hovering over existing tower → show its range */
+    const existing = state.towerMeshMap.get(cell.col + "," + cell.row);
+    if (existing) {
+      hoverRing.visible = false;
+      const pos = existing.group.position;
+      rangeCircle.position.x = pos.x; rangeCircle.position.z = pos.z;
+      rangeCircle.geometry.dispose();
+      rangeCircle.geometry = new THREE.RingGeometry(existing.range - 0.05, existing.range, 48);
+      rangeCircle.visible = true;
+      return;
+    }
+
+    if (isPathTile(cell.col, cell.row)) {
       hoverRing.visible = false; rangeCircle.visible = false; return;
     }
     const pos = gridToWorld(cell.col, cell.row);
@@ -884,10 +1084,12 @@ function init() {
       dustGeo.attributes.position.needsUpdate = true;
 
       state.towers.forEach(t => {
-        t.orb.position.y = 2.2 + Math.sin(time*2+t.col+t.row)*0.1;
+        const oby = t.orbBaseY || 2.2;
+        t.orb.position.y = oby + Math.sin(time*2+t.col+t.row)*0.1;
         t.orb.rotation.y = time;
         t.glow.material.opacity = 0.2 + Math.sin(time*3+t.col)*0.1;
-        if (t.light) t.light.intensity = 25 + Math.sin(time*4+t.row)*10;
+        t.glow.position.y = t.orb.position.y;
+        if (t.light) { t.light.intensity = 25 + Math.sin(time*4+t.row)*10; t.light.position.y = t.orb.position.y; }
       });
 
       if (state.waveActive) {
@@ -996,13 +1198,13 @@ function init() {
       state.towers.forEach(t => {
         t.cooldown -= dt; if (t.cooldown > 0) return;
         const tPos = new THREE.Vector3(t.group.position.x, 0, t.group.position.z);
-        let closest = null, closestDist = t.info.range;
+        let closest = null, closestDist = t.range;
         state.enemies.forEach(e => {
           if (!e.alive) return;
           const d = tPos.distanceTo(new THREE.Vector3(e.group.position.x, 0, e.group.position.z));
           if (d < closestDist) { closestDist = d; closest = e; }
         });
-        if (closest) { fireProjectile(t, closest); t.cooldown = t.info.rate; }
+        if (closest) { fireProjectile(t, closest); t.cooldown = t.rate; }
       });
 
       for (let i = state.projectiles.length - 1; i >= 0; i--) {
@@ -1060,3 +1262,4 @@ $("speed-btn").addEventListener("click", () => { speed = speed >= 3 ? 1 : speed 
 $("pause-btn").addEventListener("click", () => { paused = !paused; updatePauseBtn(); });
 $("restart-btn").addEventListener("click", () => window.location.reload());
 $("replay-btn").addEventListener("click", () => window.location.reload());
+/* Popup buttons are wired inside init() after rangeCircle is created */

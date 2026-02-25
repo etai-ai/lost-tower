@@ -93,6 +93,7 @@
       #auto-btn, #speed-btn, #pause-btn {
         font-family: 'Georgia', serif; cursor: pointer; border-radius: 5px;
         -webkit-tap-highlight-color: transparent; letter-spacing: 1px; white-space: nowrap;
+        background: rgba(138,126,96,0.1); border: 1px solid rgba(138,126,96,0.25); color: #8a7e60;
       }
 #auto-btn { padding: 9px 20px; font-size: 16px; }
       body.mobile #auto-btn { padding: 7px 12px; font-size: 14px; }
@@ -116,6 +117,43 @@
         display: flex; gap: 10px; z-index: 10; pointer-events: none;
       }
       body.mobile #tower-bar { bottom: 6px; gap: 6px; }
+
+      /* ─── Tower Popup ─── */
+      #tower-popup {
+        position: absolute; z-index: 18; pointer-events: auto;
+        background: rgba(15,12,10,0.96); border: 1px solid rgba(138,126,96,0.5);
+        border-radius: 8px; padding: 14px 18px; min-width: 220px; max-width: 320px;
+        font-family: 'Georgia', serif; color: #d4c8a0;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+      }
+      #tp-header {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        font-size: 16px; font-weight: bold;
+      }
+      #tp-icon { font-size: 22px; }
+      #tp-level { font-size: 12px; color: #8a7e60; margin-left: auto; }
+      #tp-stats { font-size: 13px; color: #b0a888; line-height: 1.9; margin-bottom: 12px; }
+      #tp-stats strong { color: #d4c8a0; }
+      #tp-stats .stat-upgrade { color: #66dd88; font-weight: bold; }
+      #tp-actions { display: flex; gap: 8px; }
+      #tp-upgrade, #tp-sell, #tp-close {
+        font-family: 'Georgia', serif; cursor: pointer; border-radius: 5px;
+        padding: 8px 14px; font-size: 13px; letter-spacing: 0.5px;
+        -webkit-tap-highlight-color: transparent; border: 1px solid; white-space: nowrap;
+      }
+      #tp-upgrade {
+        background: rgba(100,200,100,0.15); border-color: rgba(100,200,100,0.4);
+        color: #88dd88; flex: 1;
+      }
+      #tp-upgrade:disabled { opacity: 0.35; cursor: default; }
+      #tp-sell {
+        background: rgba(200,100,100,0.15); border-color: rgba(200,100,100,0.4);
+        color: #dd8888; flex: 1;
+      }
+      #tp-close {
+        background: rgba(138,126,96,0.15); border-color: rgba(138,126,96,0.3);
+        color: #8a7e60; padding: 8px 12px; font-size: 16px; line-height: 1;
+      }
 
       /* ─── Overlays ─── */
       .overlay {
@@ -158,12 +196,12 @@
       <button id="start-btn">Defend the Tower</button>
       <div class="controls">
         <span class="controls-desktop">
-          <strong>Click</strong> &mdash; Place tower &middot;
+          <strong>Click</strong> &mdash; Place / select tower &middot;
           <strong>Right-drag</strong> &mdash; Rotate &middot;
           <strong>Scroll</strong> &mdash; Zoom
         </span>
         <span class="controls-mobile">
-          <strong>Tap</strong> &mdash; Place tower &middot;
+          <strong>Tap</strong> &mdash; Place / select tower &middot;
           <strong>Drag</strong> &mdash; Rotate &middot;
           <strong>Pinch</strong> &mdash; Zoom
         </span>
@@ -199,6 +237,21 @@
 
       <!-- Tower Bar (populated by JS) -->
       <div id="tower-bar"></div>
+
+      <!-- Tower Info Popup -->
+      <div id="tower-popup" style="display:none">
+        <div id="tp-header">
+          <span id="tp-icon"></span>
+          <span id="tp-name"></span>
+          <span id="tp-level"></span>
+        </div>
+        <div id="tp-stats"></div>
+        <div id="tp-actions">
+          <button id="tp-upgrade"></button>
+          <button id="tp-sell"></button>
+          <button id="tp-close">&times;</button>
+        </div>
+      </div>
 
       <!-- Game Over -->
       <div id="game-over" class="overlay" style="display:none">
