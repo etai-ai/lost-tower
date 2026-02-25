@@ -1078,6 +1078,7 @@ function init() {
     camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
   };
   window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", () => setTimeout(onResize, 150));
 }
 
 /* ─── ENTRY POINT ─── */

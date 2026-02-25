@@ -2,18 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0908">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>The Lost Tower</title>
     <script type="importmap">
       { "imports": { "three": "https://esm.sh/three@0.170.0" } }
     </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
+      html { background: #0a0908; }
       html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0908; font-family: 'Georgia', serif; }
 
       /* ─── Title Screen ─── */
       #title-screen {
-        width: 100%; height: 100vh;
+        width: 100%; height: 100vh; height: 100dvh;
         background: linear-gradient(180deg, #0a0908 0%, #1a1510 50%, #0a0908 100%);
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         color: #d4c8a0; padding: 20px; text-align: center;
@@ -55,7 +59,7 @@
 
       /* ─── Game Screen ─── */
       #game-screen {
-        width: 100%; height: 100vh; position: relative; overflow: hidden;
+        width: 100%; height: 100vh; height: 100dvh; position: relative; overflow: hidden;
         touch-action: none; user-select: none; -webkit-user-select: none;
       }
       #game-mount { width: 100%; height: 100%; cursor: crosshair; position: relative; z-index: 0; }
@@ -66,7 +70,7 @@
         position: absolute; top: 0; left: 50%; transform: translateX(-50%);
         width: 78%; max-width: 900px;
         display: flex; justify-content: space-between; align-items: center;
-        padding: 14px 24px; z-index: 10;
+        padding: max(14px, env(safe-area-inset-top)) 24px 14px; z-index: 10;
         background: linear-gradient(180deg, rgba(10,9,8,0.9) 0%, rgba(10,9,8,0.6) 80%, transparent 100%);
         min-height: 70px; border-radius: 0 0 10px 10px;
       }
@@ -116,7 +120,7 @@
 
       /* ─── Tower Bar ─── */
       #tower-bar {
-        position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
         display: flex; gap: 10px; z-index: 10; pointer-events: none;
       }
       body.mobile #tower-bar { bottom: 6px; gap: 6px; }
