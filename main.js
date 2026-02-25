@@ -27,20 +27,60 @@ const PATH_POINTS = [
 ];
 
 const WAVES = [
-  { enemies: 8,  hp: 50,  speed: 2.4, reward: 8,  delay: 0.9, name: "Forgotten Shades",  type: "shade" },
-  { enemies: 10, hp: 65,  speed: 2.6, reward: 9,  delay: 0.8, name: "Temple Wraiths",    type: "wraith" },
-  { enemies: 12, hp: 80,  speed: 2.8, reward: 10, delay: 0.75, name: "Stone Golems",     type: "golem" },
-  { enemies: 10, hp: 120, speed: 3.2, reward: 12, delay: 0.7, name: "Shadow Knights",    type: "knight" },
-  { enemies: 14, hp: 100, speed: 3.0, reward: 11, delay: 0.55, name: "Cursed Swarm",     type: "swarm" },
-  { enemies: 12, hp: 160, speed: 3.4, reward: 14, delay: 0.65, name: "Ancient Warlords", type: "warlord" },
-  { enemies: 16, hp: 150, speed: 3.6, reward: 13, delay: 0.45, name: "Spirit Horde",     type: "spirit" },
-  { enemies: 4,  hp: 700, speed: 1.8, reward: 50, delay: 1.8, name: "Temple Guardians",  type: "guardian" },
-  { enemies: 18, hp: 200, speed: 4.0, reward: 15, delay: 0.4, name: "Void Walkers",      type: "voidwalker" },
-  { enemies: 1,  hp: 2500, speed: 1.5, reward: 200, delay: 3.0, name: "The Sealed One",  type: "boss" },
+  /* Wave 1-3: single type intro */
+  { name: "Forgotten Shades", groups: [
+    { type: "shade", count: 8, hp: 50, reward: 8, delay: 0.9 },
+  ]},
+  { name: "Temple Wraiths", groups: [
+    { type: "wraith", count: 10, hp: 65, reward: 9, delay: 0.8 },
+  ]},
+  { name: "Stone Golems", groups: [
+    { type: "golem", count: 12, hp: 80, reward: 10, delay: 0.75 },
+  ]},
+  /* Wave 4: Knights with shade scouts */
+  { name: "Shadow Vanguard", groups: [
+    { type: "shade", count: 3, hp: 40, reward: 6, delay: 0.5 },
+    { type: "knight", count: 8, hp: 120, reward: 12, delay: 0.7 },
+  ]},
+  /* Wave 5: Swarm with wraith flankers */
+  { name: "Cursed Swarm", groups: [
+    { type: "swarm", count: 10, hp: 100, reward: 11, delay: 0.45 },
+    { type: "wraith", count: 4, hp: 90, reward: 10, delay: 0.7 },
+  ]},
+  /* Wave 6: Warlords with knight guards */
+  { name: "Warlord Warband", groups: [
+    { type: "knight", count: 4, hp: 100, reward: 10, delay: 0.6 },
+    { type: "warlord", count: 8, hp: 160, reward: 14, delay: 0.65 },
+    { type: "knight", count: 3, hp: 100, reward: 10, delay: 0.5 },
+  ]},
+  /* Wave 7: True horde — spirits + swarm + wraiths */
+  { name: "Spirit Horde", groups: [
+    { type: "swarm", count: 6, hp: 80, reward: 9, delay: 0.3 },
+    { type: "spirit", count: 8, hp: 150, reward: 13, delay: 0.45 },
+    { type: "wraith", count: 4, hp: 120, reward: 11, delay: 0.6 },
+    { type: "swarm", count: 5, hp: 80, reward: 9, delay: 0.25 },
+  ]},
+  /* Wave 8: Guardians with warlord escort */
+  { name: "Temple Guardians", groups: [
+    { type: "warlord", count: 3, hp: 200, reward: 18, delay: 1.0 },
+    { type: "guardian", count: 3, hp: 700, reward: 50, delay: 2.0 },
+    { type: "warlord", count: 2, hp: 200, reward: 18, delay: 0.8 },
+  ]},
+  /* Wave 9: Fast mixed rush */
+  { name: "Void Onslaught", groups: [
+    { type: "knight", count: 4, hp: 150, reward: 12, delay: 0.35 },
+    { type: "voidwalker", count: 10, hp: 200, reward: 15, delay: 0.4 },
+    { type: "spirit", count: 5, hp: 180, reward: 13, delay: 0.35 },
+    { type: "knight", count: 3, hp: 150, reward: 12, delay: 0.3 },
+  ]},
+  /* Wave 10: Boss with guardian escorts */
+  { name: "The Sealed One", groups: [
+    { type: "guardian", count: 2, hp: 500, reward: 40, delay: 2.0 },
+    { type: "boss", count: 1, hp: 2500, reward: 200, delay: 3.0 },
+  ]},
 ];
 
 /* ─── ENDLESS MODE WAVE GENERATOR ─── */
-const ENDLESS_TYPES = ["shade","wraith","golem","knight","swarm","warlord","spirit","guardian","voidwalker","boss"];
 const ENDLESS_NAMES = [
   "Risen","Empowered","Ancient","Abyssal","Infernal","Spectral","Corrupted","Forsaken","Eldritch","Ascended",
 ];
@@ -54,44 +94,70 @@ function generateEndlessWave(waveNum) {
   const isBoss = n % 5 === 0;
   const isMega = n % 10 === 0;
 
-  /* Scaling factors — exponential curves */
+  /* Scaling factors */
   const hpScale = Math.pow(1.22, n);
-  const spdBase = 2.6 + Math.min(n * 0.12, 2.4); /* caps at 5.0 */
-  const countBase = isMega ? 2 : isBoss ? 3 : Math.min(8 + Math.floor(n * 1.2), 30);
+  /* Speed multiplier: enemies get faster each endless wave, capping at ~1.5x their base */
+  const speedMult = Math.min(1.0 + n * 0.025, 1.5);
 
-  /* Pick enemy type */
-  let type, name;
+  const pool = ["shade","wraith","golem","knight","swarm","warlord","spirit","voidwalker"];
+  const groups = [];
+  let name;
+
   if (isMega) {
-    type = "boss";
     name = ENDLESS_BOSS_NAMES[(Math.floor(n / 10) - 1) % ENDLESS_BOSS_NAMES.length];
+    const escortType = pool[(n + 3) % pool.length];
+    groups.push({ type: escortType, count: 4, hp: Math.round(150 * hpScale), reward: Math.round(12 + n * 1.5), delay: 0.6 });
+    groups.push({ type: "boss", count: 2, hp: Math.round(2500 * hpScale), reward: Math.round(200 + n * 20), delay: 2.5 });
   } else if (isBoss) {
-    type = "guardian";
     name = ENDLESS_BOSS_NAMES[(Math.floor(n / 5) - 1) % ENDLESS_BOSS_NAMES.length];
+    const escortType = pool[(n + 1) % pool.length];
+    groups.push({ type: escortType, count: 3, hp: Math.round(120 * hpScale), reward: Math.round(10 + n), delay: 0.8 });
+    groups.push({ type: "guardian", count: 3, hp: Math.round(700 * hpScale), reward: Math.round(50 + n * 8), delay: 1.5 });
   } else {
-    /* Cycle through non-boss types, picking based on wave */
-    const pool = ["shade","wraith","golem","knight","swarm","warlord","spirit","voidwalker"];
-    type = pool[(n - 1) % pool.length];
+    /* Mixed: pick 2-3 types */
+    const idx = (n - 1) % pool.length;
+    const primary = pool[idx];
+    const secondary = pool[(idx + 3) % pool.length];
     const prefix = ENDLESS_NAMES[(Math.floor((n - 1) / pool.length)) % ENDLESS_NAMES.length];
-    const baseName = WAVES.find(w => w.type === type)?.name || type;
+    const baseName = WAVES.find(w => w.groups.some(g => g.type === primary))?.name || primary;
     name = prefix + " " + baseName;
+
+    const totalCount = Math.min(8 + Math.floor(n * 1.2), 30);
+    const secCount = Math.max(2, Math.floor(totalCount * 0.3));
+    const priCount = totalCount - secCount;
+    const baseHp = (80 + n * 15);
+    const reward = Math.round(10 + n * 1.5);
+    const delay = Math.max(0.2, 0.6 - n * 0.01);
+
+    groups.push({ type: secondary, count: secCount, hp: Math.round(baseHp * 0.7 * hpScale), reward: Math.round(reward * 0.8), delay: delay * 0.8 });
+    groups.push({ type: primary, count: priCount, hp: Math.round(baseHp * hpScale), reward, delay });
+    if (n >= 5 && n % 3 === 0) {
+      const tertiary = pool[(idx + 5) % pool.length];
+      const terCount = Math.max(2, Math.floor(totalCount * 0.15));
+      groups.push({ type: tertiary, count: terCount, hp: Math.round(baseHp * 1.2 * hpScale), reward: Math.round(reward * 1.2), delay: delay * 1.2 });
+    }
   }
 
-  const hp = isMega
-    ? Math.round(2500 * hpScale)
-    : isBoss
-      ? Math.round(700 * hpScale)
-      : Math.round((80 + n * 15) * hpScale);
+  return { name, groups, speedMult };
+}
 
-  const speed = isMega ? Math.min(1.5 + n * 0.04, 3.0) : isBoss ? Math.min(1.8 + n * 0.06, 3.5) : Math.min(spdBase, 5.0);
-  const reward = isMega ? Math.round(200 + n * 20) : isBoss ? Math.round(50 + n * 8) : Math.round(10 + n * 1.5);
-  const delay = isMega ? 2.5 : isBoss ? 1.5 : Math.max(0.2, 0.6 - n * 0.01);
-
-  return { enemies: countBase, hp, speed, reward, delay, name, type };
+/* Flatten a wave definition (with groups) into a sequential spawn list */
+function buildSpawnList(waveDef) {
+  const list = [];
+  const sMult = waveDef.speedMult || 1.0;
+  for (const g of waveDef.groups) {
+    const speed = (ENEMY_VISUALS[g.type]?.baseSpeed || 2.5) * sMult;
+    for (let i = 0; i < g.count; i++) {
+      list.push({ type: g.type, hp: g.hp, speed, reward: g.reward, delay: g.delay });
+    }
+  }
+  return list;
 }
 
 function getWaveInfo(waveNum) {
-  if (waveNum <= WAVES.length) return WAVES[waveNum - 1];
-  return generateEndlessWave(waveNum);
+  const raw = waveNum <= WAVES.length ? WAVES[waveNum - 1] : generateEndlessWave(waveNum);
+  const spawnList = buildSpawnList(raw);
+  return { name: raw.name, groups: raw.groups, spawnList, enemies: spawnList.length };
 }
 
 const ENEMY_VISUALS = {
@@ -99,61 +165,61 @@ const ENEMY_VISUALS = {
     bodyColor: 0x442244, emissive: 0x331133, emissiveIntensity: 0.6,
     glowColor: 0x663366, eyeColor: 0xff44ff,
     scale: 0.75, opacity: 0.6, hpBarColor: 0xcc66cc,
-    bobSpeed: 6, bobAmp: 0.08, spinSpeed: 0,
+    bobSpeed: 6, bobAmp: 0.08, spinSpeed: 0, baseSpeed: 3.2,
   },
   wraith: {
     bodyColor: 0x8899bb, emissive: 0x556688, emissiveIntensity: 0.8,
     glowColor: 0x8899cc, eyeColor: 0xaaccff,
     scale: 0.8, opacity: 0.45, hpBarColor: 0x88aadd,
-    bobSpeed: 3, bobAmp: 0.12, spinSpeed: 0,
+    bobSpeed: 3, bobAmp: 0.12, spinSpeed: 0, baseSpeed: 2.8,
   },
   golem: {
     bodyColor: 0x554433, emissive: 0x221100, emissiveIntensity: 0.2,
     glowColor: 0x443322, eyeColor: 0xffaa33,
     scale: 1.3, opacity: 0.95, hpBarColor: 0xbb8844,
-    bobSpeed: 2, bobAmp: 0.02, spinSpeed: 0,
+    bobSpeed: 2, bobAmp: 0.02, spinSpeed: 0, baseSpeed: 2.0,
   },
   knight: {
     bodyColor: 0x331111, emissive: 0x440000, emissiveIntensity: 0.7,
     glowColor: 0x661122, eyeColor: 0xff2222,
     scale: 1.0, opacity: 0.85, hpBarColor: 0xff4444,
-    bobSpeed: 4, bobAmp: 0.04, spinSpeed: 1.5,
+    bobSpeed: 4, bobAmp: 0.04, spinSpeed: 1.5, baseSpeed: 3.4,
   },
   swarm: {
     bodyColor: 0x557722, emissive: 0x334400, emissiveIntensity: 0.5,
     glowColor: 0x669933, eyeColor: 0xccff44,
     scale: 0.55, opacity: 0.8, hpBarColor: 0xaacc44,
-    bobSpeed: 10, bobAmp: 0.06, spinSpeed: 0,
+    bobSpeed: 10, bobAmp: 0.06, spinSpeed: 0, baseSpeed: 3.8,
   },
   warlord: {
     bodyColor: 0x551122, emissive: 0x440011, emissiveIntensity: 0.6,
     glowColor: 0x882233, eyeColor: 0xff6644,
     scale: 1.25, opacity: 0.9, hpBarColor: 0xff6644,
-    bobSpeed: 3, bobAmp: 0.03, spinSpeed: 0.8,
+    bobSpeed: 3, bobAmp: 0.03, spinSpeed: 0.8, baseSpeed: 2.4,
   },
   spirit: {
     bodyColor: 0x225566, emissive: 0x11aacc, emissiveIntensity: 1.2,
     glowColor: 0x22ccee, eyeColor: 0x44ffff,
     scale: 0.85, opacity: 0.7, hpBarColor: 0x44ddee,
-    bobSpeed: 5, bobAmp: 0.1, spinSpeed: 3.0,
+    bobSpeed: 5, bobAmp: 0.1, spinSpeed: 3.0, baseSpeed: 3.6,
   },
   guardian: {
     bodyColor: 0xaa8833, emissive: 0xcc9922, emissiveIntensity: 1.5,
     glowColor: 0xffcc44, eyeColor: 0xffee88,
     scale: 1.8, opacity: 0.9, hpBarColor: 0xffcc44,
-    bobSpeed: 2, bobAmp: 0.05, spinSpeed: 1.0,
+    bobSpeed: 2, bobAmp: 0.05, spinSpeed: 1.0, baseSpeed: 1.8,
   },
   voidwalker: {
     bodyColor: 0x110022, emissive: 0x220044, emissiveIntensity: 0.9,
     glowColor: 0x440088, eyeColor: 0xcc44ff,
     scale: 0.9, opacity: 0.75, hpBarColor: 0xaa44ff,
-    bobSpeed: 7, bobAmp: 0.07, spinSpeed: 2.0,
+    bobSpeed: 7, bobAmp: 0.07, spinSpeed: 2.0, baseSpeed: 4.0,
   },
   boss: {
     bodyColor: 0x661111, emissive: 0xff4400, emissiveIntensity: 2.0,
     glowColor: 0xff6622, eyeColor: 0xffdd44,
     scale: 2.2, opacity: 0.95, hpBarColor: 0xff8844,
-    bobSpeed: 1.5, bobAmp: 0.04, spinSpeed: 0.5,
+    bobSpeed: 1.5, bobAmp: 0.04, spinSpeed: 0.5, baseSpeed: 1.5,
   },
 };
 
@@ -382,10 +448,6 @@ function updateWaveUI() {
   }
 }
 
-function updateEnemiesLeft(count) {
-  /* no-op — removed from HUD */
-}
-
 function updatePauseBtn() {
   const btn = $("pause-btn");
   btn.textContent = paused ? "\u25B6" : "\u23F8";
@@ -446,13 +508,10 @@ function showGameOver() {
 }
 
 function showVictory() {
+  if (state.endless) return; /* endless mode ends on game over, never victory */
   $("victory-screen").style.display = "";
-  if (state.endless) {
-    /* Should not reach here in endless — game ends on game over */
-  } else {
-    $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
-    $("endless-btn").style.display = "";
-  }
+  $("victory-stats").textContent = state.towers.length + " towers \u00B7 " + state.gold + " gold left";
+  $("endless-btn").style.display = "";
   updateWaveUI();
   SFX.victory();
 }
@@ -475,7 +534,7 @@ function startWave() {
   if (state.victory && !state.endless) return;
   /* Campaign: capped at WAVES.length. Endless: unlimited. */
   if (!state.endless && state.wave >= WAVES.length) return;
-  state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5;
+  state.wave++; state.waveActive = true; state.spawned = 0; state.spawnTimer = 0.5; state.currentWaveInfo = null;
   updateWaveUI();
   SFX.waveStart();
 }
@@ -728,7 +787,7 @@ function init() {
     towers: [], enemies: [], projectiles: [],
     gold: 150, lives: 20, wave: 0,
     waveActive: false, spawnTimer: 0, spawned: 0, enemiesAlive: 0,
-    gameOver: false, victory: false, endless: false, selectedTower: "fire",
+    gameOver: false, victory: false, endless: false, currentWaveInfo: null, selectedTower: "fire",
     towerMeshMap: new Map(),
   };
 
@@ -1346,17 +1405,18 @@ function init() {
       });
 
       if (state.waveActive) {
-        const waveInfo = getWaveInfo(state.wave);
+        const waveInfo = state.currentWaveInfo || (state.currentWaveInfo = getWaveInfo(state.wave));
         if (waveInfo && state.spawned < waveInfo.enemies) {
           state.spawnTimer -= dt;
           if (state.spawnTimer <= 0) {
-            spawnEnemy(waveInfo.hp, waveInfo.speed, waveInfo.reward, waveInfo.type);
-            state.spawned++; state.spawnTimer = waveInfo.delay;
-            updateEnemiesLeft(waveInfo.enemies - state.spawned + state.enemiesAlive);
+            const s = waveInfo.spawnList[state.spawned];
+            spawnEnemy(s.hp, s.speed, s.reward, s.type);
+            state.spawned++;
+            state.spawnTimer = state.spawned < waveInfo.enemies ? waveInfo.spawnList[state.spawned]?.delay || 0.5 : 0;
           }
         }
         if (state.spawned >= (waveInfo?.enemies || 0) && state.enemiesAlive <= 0) {
-          state.waveActive = false; updateWaveUI();
+          state.waveActive = false; state.currentWaveInfo = null; updateWaveUI();
           if (!state.endless && state.wave >= WAVES.length) {
             state.victory = true; showVictory();
           } else {
@@ -1370,7 +1430,6 @@ function init() {
             }
           }
         }
-        updateEnemiesLeft((waveInfo ? waveInfo.enemies - state.spawned : 0) + state.enemiesAlive);
       }
 
       state.enemies.forEach(e => moveEnemy(e, dt));
@@ -1470,7 +1529,18 @@ function init() {
           if (p.type === "ice") p.target.slowTimer = 2.0;
           if (p.type === "arcane") {
             let cc = 0; const hitPos = p.target.group.position.clone();
-            state.enemies.forEach(e => { if (!e.alive || e === p.target || cc >= 2) return; if (e.group.position.distanceTo(hitPos) < 2.5) { e.hp -= p.damage * 0.5; flashEnemyDamage(e); cc++; } });
+            state.enemies.forEach(e => {
+              if (!e.alive || e === p.target || cc >= 2) return;
+              if (e.group.position.distanceTo(hitPos) < 2.5) {
+                e.hp -= p.damage * 0.5; flashEnemyDamage(e); cc++;
+                if (e.hp <= 0 && e.alive) {
+                  spawnDeathVFX(e.group.position.x, e.group.position.y, e.group.position.z, e.type);
+                  SFX.enemyDeath();
+                  e.alive = false; scene.remove(e.group); state.enemiesAlive--;
+                  state.gold += e.reward; updateGold();
+                }
+              }
+            });
           }
           /* Hit VFX + sound */
           const hp = p.target.group.position;

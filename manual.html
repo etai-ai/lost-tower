@@ -126,121 +126,195 @@
   <p>Each tower can be upgraded twice (Lv 1 &rarr; 2 &rarr; 3). Upgrades increase damage, fire rate, and range. The tower grows visually taller with a brighter orb at each level.</p>
   <table>
     <tr><th>Tower</th><th>Lv 1 (base)</th><th>Lv 2 cost</th><th>Lv 2 stats</th><th>Lv 3 cost</th><th>Lv 3 stats</th></tr>
-    <tr><td><strong style="color:#ff6644">Fire</strong></td><td>12 dmg / 0.9s / 3.5r</td><td>40g</td><td>18 dmg / 0.85s / 3.8r</td><td>70g</td><td>28 dmg / 0.75s / 4.2r</td></tr>
-    <tr><td><strong style="color:#44aaff">Frost</strong></td><td>8 dmg / 1.2s / 4.0r</td><td>50g</td><td>12 dmg / 1.1s / 4.5r</td><td>85g</td><td>18 dmg / 1.0s / 5.0r</td></tr>
-    <tr><td><strong style="color:#66ff88">Earth</strong></td><td>25 dmg / 1.8s / 3.0r</td><td>60g</td><td>40 dmg / 1.6s / 3.3r</td><td>100g</td><td>65 dmg / 1.4s / 3.6r</td></tr>
-    <tr><td><strong style="color:#ffcc44">Arcane</strong></td><td>18 dmg / 1.0s / 5.0r</td><td>80g</td><td>28 dmg / 0.9s / 5.5r</td><td>130g</td><td>42 dmg / 0.8s / 6.0r</td></tr>
+    <tr><td><strong style="color:#ff6644">Fire</strong></td><td>12 dmg / 0.9s / 3.5r</td><td>25g</td><td>18 dmg / 0.85s / 3.8r</td><td>45g</td><td>28 dmg / 0.75s / 4.2r</td></tr>
+    <tr><td><strong style="color:#44aaff">Frost</strong></td><td>8 dmg / 1.2s / 4.0r</td><td>30g</td><td>12 dmg / 1.1s / 4.5r</td><td>55g</td><td>18 dmg / 1.0s / 5.0r</td></tr>
+    <tr><td><strong style="color:#66ff88">Earth</strong></td><td>25 dmg / 1.8s / 3.0r</td><td>35g</td><td>40 dmg / 1.6s / 3.3r</td><td>65g</td><td>65 dmg / 1.4s / 3.6r</td></tr>
+    <tr><td><strong style="color:#ffcc44">Arcane</strong></td><td>18 dmg / 1.0s / 5.0r</td><td>50g</td><td>28 dmg / 0.9s / 5.5r</td><td>85g</td><td>42 dmg / 0.8s / 6.0r</td></tr>
   </table>
   <h3>Selling</h3>
   <p>Towers can be sold for <strong>65%</strong> of total gold invested (including all upgrade costs). This lets you correct mistakes or adapt strategy.</p>
-  <div class="tip"><strong>Tip:</strong> A Lv 3 Fire tower (140g total) deals 37.3 DPS &mdash; far more efficient than two Lv 1 towers (60g, 26.6 combined DPS). Upgrade your best-positioned towers first!</div>
+  <div class="tip"><strong>Tip:</strong> A Lv 3 Fire tower (100g total) deals 37.3 DPS &mdash; far more efficient than two Lv 1 towers (60g, 26.6 combined DPS). Upgrade your best-positioned towers first!</div>
 
   <h2>Waves</h2>
-  <p>There are 10 waves of increasing difficulty. Each wave features a distinct enemy type with unique appearance and behavior. Wave 8 is a mini-boss wave and Wave 10 is the final boss.</p>
+  <p>There are 10 campaign waves of increasing difficulty. Starting from wave 4, waves feature <strong>mixed enemy compositions</strong> &mdash; groups spawn sequentially, so scouts and escorts arrive before the main threat. Wave 8 is a mini-boss wave and Wave 10 is the final boss.</p>
 
   <table>
     <tr>
       <th>#</th>
       <th>Name</th>
-      <th>Appearance</th>
-      <th>Count</th>
-      <th>HP</th>
-      <th>Speed</th>
-      <th>Reward</th>
+      <th>Composition</th>
+      <th>Total</th>
+      <th>Key Threat</th>
     </tr>
     <tr>
       <td>1</td>
       <td><span style="color:#663366">Forgotten Shades</span></td>
-      <td>Small translucent purple spheres that flicker in and out</td>
+      <td>8 shades</td>
       <td>8</td>
-      <td>50</td>
-      <td>2.4</td>
-      <td>8g</td>
+      <td>Intro wave</td>
     </tr>
     <tr>
       <td>2</td>
       <td><span style="color:#8899cc">Temple Wraiths</span></td>
-      <td>Tall pale blue pillars that float and drift upward</td>
+      <td>10 wraiths</td>
       <td>10</td>
-      <td>65</td>
-      <td>2.6</td>
-      <td>9g</td>
+      <td>Slightly faster</td>
     </tr>
     <tr>
       <td>3</td>
       <td><span style="color:#bb8844">Stone Golems</span></td>
-      <td>Large brown-grey cubes, slow and heavy</td>
+      <td>12 golems</td>
       <td>12</td>
-      <td>80</td>
-      <td>2.8</td>
-      <td>10g</td>
+      <td>Tanky + more numerous</td>
     </tr>
     <tr>
       <td>4</td>
-      <td><span style="color:#ff4444">Shadow Knights</span></td>
-      <td>Dark red spheres with rotating spike crowns</td>
-      <td>10</td>
-      <td>120</td>
-      <td>3.2</td>
-      <td>12g</td>
+      <td><span style="color:#ff4444">Shadow Vanguard</span></td>
+      <td>3 shade scouts &rarr; 8 knights</td>
+      <td>11</td>
+      <td>Fast scouts bait tower fire before tanky knights arrive</td>
     </tr>
     <tr>
       <td>5</td>
       <td><span style="color:#aacc44">Cursed Swarm</span></td>
-      <td>Tiny green-yellow spheres that jitter erratically</td>
+      <td>10 swarm &rarr; 4 wraith flankers</td>
       <td>14</td>
-      <td>100</td>
-      <td>3.0</td>
-      <td>11g</td>
+      <td>Swarm cluster followed by spread-out wraiths</td>
     </tr>
     <tr>
       <td>6</td>
-      <td><span style="color:#ff6644">Ancient Warlords</span></td>
-      <td>Large crimson spheres with protruding horns</td>
-      <td>12</td>
-      <td>160</td>
-      <td>3.4</td>
-      <td>14g</td>
+      <td><span style="color:#ff6644">Warlord Warband</span></td>
+      <td>4 knights &rarr; 8 warlords &rarr; 3 knights</td>
+      <td>15</td>
+      <td>Tanky core surrounded by fast guards</td>
     </tr>
     <tr>
       <td>7</td>
       <td><span style="color:#44ddee">Spirit Horde</span></td>
-      <td>Glowing cyan dodecahedrons that spin and pulse</td>
-      <td>16</td>
-      <td>150</td>
-      <td>3.6</td>
-      <td>13g</td>
+      <td>6 swarm &rarr; 8 spirits &rarr; 4 wraiths &rarr; 5 swarm</td>
+      <td>23</td>
+      <td>True mixed horde &mdash; overwhelming numbers</td>
     </tr>
     <tr class="boss">
       <td>8</td>
       <td><span style="color:#ffcc44">Temple Guardians</span></td>
-      <td>Huge golden octahedrons with orbiting rings</td>
-      <td>4</td>
-      <td>700</td>
-      <td>1.8</td>
-      <td>50g</td>
+      <td>3 warlord escorts &rarr; 3 guardians &rarr; 2 warlords</td>
+      <td>8</td>
+      <td>700 HP guardians with meat shield escorts</td>
     </tr>
     <tr>
       <td>9</td>
-      <td><span style="color:#aa44ff">Void Walkers</span></td>
-      <td>Dark violet icosahedrons that flicker and shimmer</td>
-      <td>18</td>
-      <td>200</td>
-      <td>4.0</td>
-      <td>15g</td>
+      <td><span style="color:#aa44ff">Void Onslaught</span></td>
+      <td>4 knights &rarr; 10 voidwalkers &rarr; 5 spirits &rarr; 3 knights</td>
+      <td>22</td>
+      <td>Fastest wave &mdash; everything at 3.8&ndash;4.2 speed</td>
     </tr>
     <tr class="boss">
       <td>10</td>
       <td><span style="color:#ff8844">The Sealed One</span></td>
-      <td>Massive red-gold sphere with double orbiting rings and pulsing core</td>
-      <td>1</td>
-      <td>2500</td>
-      <td>1.5</td>
-      <td>200g</td>
+      <td>2 guardian escorts &rarr; 1 boss (2500 HP)</td>
+      <td>3</td>
+      <td>Guardians absorb damage before the boss arrives</td>
     </tr>
   </table>
 
-  <div class="tip"><strong>Tip:</strong> Wave 8 has only 4 enemies but each has 700 HP &mdash; make sure you have Frost towers to slow them. Wave 9 is the fastest wave at 4.0 speed. The final boss has 2500 HP but moves slowly; stack damage towers along long path segments.</div>
+  <div class="tip"><strong>Tip:</strong> Mixed waves mean you can't optimize for just one enemy type. Frost towers are essential for slowing the tanky sub-groups while your damage towers clear the chaff. Wave 7's 23-enemy horde is the biggest numbers check &mdash; Arcane chain damage is invaluable here.</div>
+
+  <h2>Enemy Bestiary</h2>
+  <p>Each enemy type has a unique appearance, animation, and stat profile. Below are the base stats as they first appear; later waves and endless mode scale these values.</p>
+
+  <table>
+    <tr>
+      <th>Type</th>
+      <th>Appearance</th>
+      <th>HP Range</th>
+      <th>Base Speed</th>
+      <th>Reward</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td><span style="color:#663366"><strong>Shade</strong></span></td>
+      <td>Small translucent purple sphere, flickers in and out</td>
+      <td>40&ndash;50</td>
+      <td>3.2 (fast)</td>
+      <td>6&ndash;8g</td>
+      <td>Low HP scouts; quick and evasive</td>
+    </tr>
+    <tr>
+      <td><span style="color:#8899cc"><strong>Wraith</strong></span></td>
+      <td>Tall pale blue cylinder, floats vertically</td>
+      <td>65&ndash;120</td>
+      <td>2.8</td>
+      <td>9&ndash;11g</td>
+      <td>Mid-range; used as flankers in mixed waves</td>
+    </tr>
+    <tr>
+      <td><span style="color:#bb8844"><strong>Golem</strong></span></td>
+      <td>Large brown-grey cube, slow heavy bob</td>
+      <td>80</td>
+      <td>2.0 (slow)</td>
+      <td>10g</td>
+      <td>Very tanky for their wave; slow and heavy</td>
+    </tr>
+    <tr>
+      <td><span style="color:#ff4444"><strong>Knight</strong></span></td>
+      <td>Dark red sphere with 5 rotating spike crown</td>
+      <td>100&ndash;150</td>
+      <td>3.4</td>
+      <td>10&ndash;12g</td>
+      <td>Versatile; appears as guards and in fast rushes</td>
+    </tr>
+    <tr>
+      <td><span style="color:#aacc44"><strong>Swarm</strong></span></td>
+      <td>Tiny green-yellow sphere, jitters erratically</td>
+      <td>80&ndash;100</td>
+      <td>3.8 (fast)</td>
+      <td>9&ndash;11g</td>
+      <td>Small, numerous, and quick; overwhelms single-target towers</td>
+    </tr>
+    <tr>
+      <td><span style="color:#ff6644"><strong>Warlord</strong></span></td>
+      <td>Large crimson sphere with protruding horns</td>
+      <td>160&ndash;200</td>
+      <td>2.4 (slow)</td>
+      <td>14&ndash;18g</td>
+      <td>Tanky mid-tier; serves as escort for guardians</td>
+    </tr>
+    <tr>
+      <td><span style="color:#44ddee"><strong>Spirit</strong></span></td>
+      <td>Glowing cyan dodecahedron, spins and pulses</td>
+      <td>150&ndash;180</td>
+      <td>3.6</td>
+      <td>13g</td>
+      <td>Fast + durable; dangerous in horde waves</td>
+    </tr>
+    <tr class="boss">
+      <td><span style="color:#ffcc44"><strong>Guardian</strong></span></td>
+      <td>Huge golden octahedron with orbiting ring</td>
+      <td>500&ndash;700</td>
+      <td>1.8 (very slow)</td>
+      <td>40&ndash;50g</td>
+      <td>Mini-boss; extremely tanky</td>
+    </tr>
+    <tr>
+      <td><span style="color:#aa44ff"><strong>Voidwalker</strong></span></td>
+      <td>Dark violet icosahedron, shimmers and flickers</td>
+      <td>200</td>
+      <td>4.0 (fastest)</td>
+      <td>15g</td>
+      <td>Fastest enemy; hard to slow effectively</td>
+    </tr>
+    <tr class="boss">
+      <td><span style="color:#ff8844"><strong>Boss</strong></span></td>
+      <td>Massive red-gold sphere, double orbiting rings, pulsing core</td>
+      <td>2500</td>
+      <td>1.5 (slowest)</td>
+      <td>200g</td>
+      <td>Final boss; requires concentrated DPS and slows</td>
+    </tr>
+  </table>
+
+  <div class="tip"><strong>Tip:</strong> Enemy speed is inherent to their type &mdash; golems are always slow, swarm is always fast. In endless mode all speeds scale up by a multiplier (up to 1.5&times;), but the relative differences stay the same. Frost towers are most valuable against fast types like Voidwalkers and Swarm.</div>
 
   <h2>Strategy Guide</h2>
   <h3>Early Game (Waves 1&ndash;3)</h3>
